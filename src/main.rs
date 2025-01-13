@@ -14,8 +14,12 @@
 // limitations under the License.
 //
 
+use std::sync::Arc;
 use clap::{Parser, Subcommand};
-use stof::SDoc;
+use colored::Colorize;
+use stof::{FileSystemLibrary, SDoc};
+use stof_http::HTTPLibrary;
+
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -24,38 +28,90 @@ struct Cli {
     command: Command,
 }
 
+
 #[derive(Subcommand, Debug)]
 enum Command {
     Run {
         /// File to run.
         file: String,
+
+        /// Allow list.
+        #[arg(short, long)]
+        allow: Vec<String>,
     },
     Test {
         /// File to test.
         file: String,
+
+        /// Allow list.
+        #[arg(short, long)]
+        allow: Vec<String>,
     }
 }
+
 
 fn main() {
     let cli = Cli::parse();
     match cli.command {
-        Command::Run { file } => {
-            let mut format = "stof";
-            if file.ends_with("bstof") {
-                format = "bstof";
-            }
-            let res = SDoc::file(&file, format);
+        Command::Run { file, allow } => {
+            let mut doc = create_doc(&file, &allow);
+            doc.run(None);
+        },
+        Command::Test { file, allow } => {
+            let mut doc = create_doc(&file, &allow);
+            let res = doc.run_tests(false, None);
             match res {
-                Ok(mut doc) => {
-                    doc.run(None);
-                },
-                Err(error) => {
-                    eprintln!("stof error: was not able to load '{}' in the format '{}': {}", &file, &format, error.to_string());
-                }
+                Ok(res) => println!("{res}"),
+                Err(res) => println!("{res}"),
             }
         },
-        Command::Test { file } => {
-            SDoc::test_file(&file, false);
+    }
+}
+
+
+/// Create a stof document from a file path.
+fn create_doc(path: &str, allow: &Vec<String>) -> SDoc {
+    let path_split = path.split('.').collect::<Vec<&str>>();
+    let format = *path_split.last().unwrap();
+    
+    let mut doc = SDoc::default();
+    allow_libs(&mut doc, allow);
+
+    let res = doc.file_import("main", format, path, format, "");
+    match res {
+        Ok(_) => {
+            doc
         },
+        Err(error) => {
+            eprintln!("{} {}: {}", "parse error".red(), path.blue(), error.to_string().dimmed());
+            SDoc::default()
+        }
+    }
+}
+
+
+/// Allow libraries.
+/// stof --allow all FILE_PATH
+/// stof --allow file --allow http FILE_PATH
+fn allow_libs(doc: &mut SDoc, allow: &Vec<String>) {
+    // remove the filesystem library by default
+    assert!(doc.libraries.libraries.remove("fs").is_some());
+
+    for name in allow {
+        match name.as_str() {
+            "all" => {
+                doc.load_lib(Arc::new(FileSystemLibrary::default()));
+                doc.load_lib(Arc::new(HTTPLibrary::default()));
+            },
+            "file" => {
+                doc.load_lib(Arc::new(FileSystemLibrary::default()));
+            },
+            "http" => {
+                doc.load_lib(Arc::new(HTTPLibrary::default()));
+            },
+            _ => {
+                println!("{}: {}", "unrecognized library".italic().dimmed(), name.purple());
+            }
+        }
     }
 }

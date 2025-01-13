@@ -14,16 +14,7 @@
 // limitations under the License.
 //
 
-import 'src/tests/import.stof';
-
-#[main]
-fn main() {
-    self.imported();
-    pln('Hello, world!!!');
-}
-
-#[test]
-fn test() {
-    self.imported();
-    assert(true);
+fn imported(): bool {
+    pln('imported');
+    return true;
 }
