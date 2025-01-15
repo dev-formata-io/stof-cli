@@ -18,6 +18,7 @@ use std::sync::Arc;
 use clap::{Parser, Subcommand};
 use colored::Colorize;
 use stof::{FileSystemLibrary, SDoc};
+use stof_github::{GitHubFormat, GitHubLibrary};
 use stof_http::HTTPLibrary;
 
 
@@ -102,12 +103,29 @@ fn allow_libs(doc: &mut SDoc, allow: &Vec<String>) {
             "all" => {
                 doc.load_lib(Arc::new(FileSystemLibrary::default()));
                 doc.load_lib(Arc::new(HTTPLibrary::default()));
+
+                // Enables users to access their own GitHub repositories to add interfaces and data
+                doc.load_lib(Arc::new(GitHubLibrary::default()));
+
+                // Add default access to Formata's interfaces - this will change when we have a package manager...
+                let mut formata = GitHubFormat::new("stof-formata", "dev-formata-io");
+                formata.repo_id = "formata".into();
+                doc.load_format(Arc::new(formata));
             },
             "file" => {
                 doc.load_lib(Arc::new(FileSystemLibrary::default()));
             },
             "http" => {
                 doc.load_lib(Arc::new(HTTPLibrary::default()));
+            },
+            "github" => {
+                // Enables users to access their own GitHub repositories to add interfaces and data
+                doc.load_lib(Arc::new(GitHubLibrary::default()));
+
+                // Add default access to Formata's interfaces - this will change when we have a package manager...
+                let mut formata = GitHubFormat::new("stof-formata", "dev-formata-io");
+                formata.repo_id = "formata".into();
+                doc.load_format(Arc::new(formata));
             },
             _ => {
                 println!("{}: {}", "unrecognized library".italic().dimmed(), name.purple());
