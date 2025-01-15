@@ -17,7 +17,7 @@
 use std::sync::Arc;
 use clap::{Parser, Subcommand};
 use colored::Colorize;
-use stof::{FileSystemLibrary, SDoc};
+use stof::SDoc;
 use stof_github::{GitHubFormat, GitHubLibrary};
 use stof_http::HTTPLibrary;
 
@@ -92,16 +92,12 @@ fn create_doc(path: &str, allow: &Vec<String>) -> SDoc {
 
 
 /// Allow libraries.
+/// Because this is the CLI, the File System is enabled by default.
 /// stof --allow all FILE_PATH
-/// stof --allow file --allow http FILE_PATH
 fn allow_libs(doc: &mut SDoc, allow: &Vec<String>) {
-    // remove the filesystem library by default
-    assert!(doc.libraries.libraries.remove("fs").is_some());
-
     for name in allow {
         match name.as_str() {
             "all" => {
-                doc.load_lib(Arc::new(FileSystemLibrary::default()));
                 doc.load_lib(Arc::new(HTTPLibrary::default()));
 
                 // Enables users to access their own GitHub repositories to add interfaces and data
@@ -111,9 +107,6 @@ fn allow_libs(doc: &mut SDoc, allow: &Vec<String>) {
                 let mut formata = GitHubFormat::new("stof-formata", "dev-formata-io");
                 formata.repo_id = "formata".into();
                 doc.load_format(Arc::new(formata));
-            },
-            "file" => {
-                doc.load_lib(Arc::new(FileSystemLibrary::default()));
             },
             "http" => {
                 doc.load_lib(Arc::new(HTTPLibrary::default()));
