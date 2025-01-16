@@ -56,7 +56,13 @@ fn main() {
     match cli.command {
         Command::Run { file, allow } => {
             let mut doc = create_doc(&file, &allow);
-            doc.run(None);
+            let res = doc.run(None);
+            match res {
+                Ok(_) => {
+                    // Nothing to do here...
+                },
+                Err(res) => println!("{res}"),
+            }
         },
         Command::Test { file, allow } => {
             let mut doc = create_doc(&file, &allow);
