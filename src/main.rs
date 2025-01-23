@@ -19,7 +19,7 @@ use clap::{Parser, Subcommand};
 use colored::Colorize;
 use stof::SDoc;
 use stof_github::{GitHubFormat, GitHubLibrary};
-use stof_http::HTTPLibrary;
+use stof_http::{server::serve, HTTPLibrary};
 
 
 #[derive(Parser, Debug)]
@@ -47,7 +47,15 @@ enum Command {
         /// Allow list.
         #[arg(short, long)]
         allow: Vec<String>,
-    }
+    },
+    Serve {
+        /// File to test.
+        file: String,
+
+        /// Allow list.
+        #[arg(short, long)]
+        allow: Vec<String>,
+    },
 }
 
 
@@ -72,6 +80,10 @@ fn main() {
                 Err(res) => println!("{res}"),
             }
         },
+        Command::Serve { file, allow } => {
+            let doc = create_doc(&file, &allow);
+            serve(doc); // start HTTP server with this document
+        },
     }
 }
 
@@ -90,7 +102,7 @@ fn create_doc(path: &str, allow: &Vec<String>) -> SDoc {
             doc
         },
         Err(error) => {
-            eprintln!("{} {}: {}", "parse error".red(), path.blue(), error.to_string().dimmed());
+            eprintln!("{} {}: {}", "parse error".red(), path.blue(), error.message.dimmed());
             SDoc::default()
         }
     }
