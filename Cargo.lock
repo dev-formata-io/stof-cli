@@ -1316,9 +1316,9 @@ checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 
 [[package]]
 name = "stof"
-version = "0.2.11"
+version = "0.2.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0db4b6d02531ea15b94a15b5d3a0398f0c883fd427fa517d4e095208817b1d68"
+checksum = "c92a979cee78bce249fb78586fbe59543e850fab7489f03a963f37c949fb6971"
 dependencies = [
  "anyhow",
  "bincode",
@@ -1341,7 +1341,7 @@ dependencies = [
 
 [[package]]
 name = "stof-cli"
-version = "0.4.2"
+version = "0.4.3"
 dependencies = [
  "anyhow",
  "clap",
@@ -1365,13 +1365,14 @@ dependencies = [
 
 [[package]]
 name = "stof-http"
-version = "0.2.1"
+version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "26ee17ee0fb6df872e3fd1caaec8a64bac628f0579a63db932067b3b42cb11d8"
+checksum = "d021b5e331eb9202ddeba8e6bacc19b64bd46d7068b5cb06f22d68e586e34251"
 dependencies = [
  "anyhow",
  "axum",
  "bytes",
+ "nanoid",
  "stof",
  "tokio",
  "tower-http",
