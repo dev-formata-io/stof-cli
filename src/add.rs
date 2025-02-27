@@ -14,10 +14,8 @@
 // limitations under the License.
 //
 
-use std::{fs, io, path::PathBuf};
-use bytes::Bytes;
 use colored::Colorize;
-use stof::{SDoc, SField, SVal};
+use stof::{pkg::PKG, SDoc, SField, SVal};
 
 
 /// Publish a stof package to registries.
@@ -62,7 +60,9 @@ pub(crate) async fn add_package(pkg_dir: &str, download_pkg: &str, registry: Opt
                 match res {
                     Ok(response) => {
                         if let Ok(bytes) = response.bytes().await {
-                            unzip_package(pkg_dir, download_pkg, bytes).await;
+                            let pkg_format = PKG::default();
+                            let outdir = pkg_format.unzip_pkg_bytes(download_pkg, &bytes);
+                            add_dependencies(&outdir, pkg_dir).await;
                             println!("{}", "successfully added package".green());
                         } else {
                             println!("{}: {}", "publish send error".red(), "could not parse response into bytes".italic().dimmed());
@@ -81,49 +81,6 @@ pub(crate) async fn add_package(pkg_dir: &str, download_pkg: &str, registry: Opt
     } else {
         println!("{}: {}", "add package error".red(), "pkg.stof file not found".italic().dimmed());
     }
-}
-
-
-/// Unzip package into __stof__ directory.
-async fn unzip_package(pkg_dir: &str, download_pkg: &str, bytes: Bytes) {
-    let outdir = format!("{}/__stof__/{}", pkg_dir, download_pkg.trim_start_matches("@"));
-    let _ = fs::remove_dir_all(&outdir); // remove all contents of the existing out dir if any
-    let _ = fs::create_dir_all(&outdir); // make sure the out dir exists
-
-    // Load bytes into a temp zip file (TODO: don't do this)
-    let _ = fs::create_dir_all("__stof_staging__");
-    let _ = fs::write("__stof_staging__/tmp.zip", bytes);
-
-    if let Ok(file) = fs::File::open("__stof_staging__/tmp.zip") {
-        if let Ok(mut archive) = zip::ZipArchive::new(file) {
-            for i in 0..archive.len() {
-                let mut file = archive.by_index(i).unwrap();
-                
-                let outname = match file.enclosed_name() {
-                    Some(path) => path,
-                    None => continue,
-                };
-                
-                let mut outpath = PathBuf::from(&outdir);
-                outpath.push(outname);
-                
-                if file.is_dir() {
-                    let _ = fs::create_dir_all(&outpath);
-                } else {
-                    if let Some(p) = outpath.parent() {
-                        if !p.exists() {
-                            let _ = fs::create_dir_all(p);
-                        }
-                    }
-                    if let Ok(mut outfile) = fs::File::create(&outpath) {
-                        let _ = io::copy(&mut file, &mut outfile);
-                    }
-                }
-            }
-        }
-    }
-    let _ = fs::remove_dir_all("__stof_staging__");
-    add_dependencies(&outdir, pkg_dir).await;
 }
 
 

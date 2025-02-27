@@ -1872,9 +1872,9 @@ checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 
 [[package]]
 name = "stof"
-version = "0.3.12"
+version = "0.3.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4927c01ca3305f4a94195206e396535388e2a75dcd7cf1b99983fdc0aa5bafa4"
+checksum = "579fb75f775add13d3bfda45bb6c4b7ad148135cb54cdd8582bd1a54af99e03f"
 dependencies = [
  "anyhow",
  "bincode",
@@ -1886,6 +1886,7 @@ dependencies = [
  "pest",
  "pest_derive",
  "quick-xml",
+ "regex",
  "serde",
  "serde-xml-rs",
  "serde_json",
@@ -1894,6 +1895,8 @@ dependencies = [
  "toml",
  "typetag",
  "urlencoding",
+ "walkdir",
+ "zip",
 ]
 
 [[package]]
@@ -1904,15 +1907,11 @@ dependencies = [
  "bytes",
  "clap",
  "colored 3.0.0",
- "nanoid",
- "regex",
  "reqwest",
  "stof",
  "stof-github",
  "stof-http",
  "tokio",
- "walkdir",
- "zip",
 ]
 
 [[package]]

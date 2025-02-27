@@ -47,5 +47,5 @@ add: {
 
 // Dependencies for this package
 dependencies: [
-    ('formata', '@formata/geometry')
+    // dependencies go here
 ]

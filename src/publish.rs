@@ -14,16 +14,11 @@
 // limitations under the License.
 //
 
-use std::{collections::HashSet, fs::{self, File}, io::{Read, Seek, Write}, path::Path, sync::Arc};
-use anyhow::Context;
+use std::{collections::HashSet, fs, sync::Arc};
 use bytes::Bytes;
 use colored::Colorize;
-use nanoid::nanoid;
-use regex::Regex;
-use stof::{SDoc, SField, SNodeRef, SVal};
+use stof::{pkg::PKG, SDoc, SField, SNodeRef, SVal};
 use tokio::{sync::Mutex, task::JoinSet};
-use walkdir::{DirEntry, WalkDir};
-use zip::write::SimpleFileOptions;
 
 
 /// Publish a stof package to registries.
@@ -87,79 +82,26 @@ pub(crate) async fn publish_package(dir: &str) {
         }
 
         // Zip up the package directory so that it can be published
-        let tmp_file_name = nanoid!();
-        let _ = fs::create_dir_all("__stof_staging__");
-        let path = format!("__stof_staging__/{}.zip", tmp_file_name);
-        let file = fs::File::create(&path).unwrap();
-
-        let walkdir = WalkDir::new(dir);
-        let iter = walkdir.into_iter();
-        let res = zip_directory(&mut iter.filter_map(|e| e.ok()), dir, file, zip::CompressionMethod::Bzip2, &excluded);
-        if res.is_err() {
+        let pkg_format = PKG::default();
+        if let Some(temp_zip_file_path) = pkg_format.create_temp_zip(dir, &excluded) {
+            if let Ok(bytes) = fs::read(&temp_zip_file_path) {
+                let pkg = Arc::new(Mutex::new((pkg_doc, Bytes::from(bytes))));
+                let mut set = JoinSet::new();
+                for reg in publish_registries {
+                    set.spawn(publish_to_registry(pkg.clone(), reg, pkg_path.clone()));
+                }
+                while let Some(_res) = set.join_next().await {
+                    // don't need anything here currently...
+                }
+            }
+            let _ = fs::remove_file(&temp_zip_file_path);
+            println!("{}", "publish success".green());
+        } else {
             println!("{}: {}", "publish error".red(), "failed to zip package directory".italic().dimmed());
-            let _ = fs::remove_dir_all("__stof_staging__");
-            return;
         }
-        if let Ok(bytes) = fs::read(&path) {
-            let pkg = Arc::new(Mutex::new((pkg_doc, Bytes::from(bytes))));
-            let mut set = JoinSet::new();
-            for reg in publish_registries {
-                set.spawn(publish_to_registry(pkg.clone(), reg, pkg_path.clone()));
-            }
-            while let Some(_res) = set.join_next().await {
-                // don't need anything here currently...
-            }
-        }
-        let _ = fs::remove_dir_all("__stof_staging__");
-        println!("{}", "publish success".green());
     } else {
         println!("{}: {}", "publish error".red(), "pkg.stof file not found".italic().dimmed());
     }
-}
-
-
-/// Zip the directory into an output file.
-fn zip_directory<T: Write + Seek>(iter: &mut dyn Iterator<Item = DirEntry>, prefix: &str, writer: T, method: zip::CompressionMethod, excluded: &HashSet<String>) -> anyhow::Result<()> {
-    let mut zip = zip::ZipWriter::new(writer);
-    let options = SimpleFileOptions::default().compression_method(method).unix_permissions(0o755);
-
-    let pref = Path::new(prefix);
-    let mut buffer = Vec::new();
-    'entries: for entry in iter {
-        let path = entry.path();
-        
-        // don't add/publish any files that are in the reserved __stof__ directory
-        let display = path.display().to_string();
-        if display.contains("__stof__") {
-            continue;
-        }
-        for exclude in excluded {
-            if let Ok(re) = Regex::new(&exclude) {
-                if re.is_match(&display) {
-                    continue 'entries;
-                }
-            }
-        }
-
-        let name = path.strip_prefix(pref).unwrap();
-        let path_as_string = name
-            .to_str()
-            .map(str::to_owned)
-            .with_context(|| format!("{name:?} Is a Non UTF-8 Path"))?;
-
-        if path.is_file() {
-            zip.start_file(path_as_string, options)?;
-            let mut f = File::open(path)?;
-
-            f.read_to_end(&mut buffer)?;
-            zip.write_all(&buffer)?;
-            buffer.clear();
-        } else if !name.as_os_str().is_empty() {
-            zip.add_directory(path_as_string, options)?;
-        }
-    }
-    zip.finish()?;
-    Ok(())
 }
 
 
