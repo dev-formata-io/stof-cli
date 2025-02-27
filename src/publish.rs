@@ -19,6 +19,7 @@ use anyhow::Context;
 use bytes::Bytes;
 use colored::Colorize;
 use nanoid::nanoid;
+use regex::Regex;
 use stof::{SDoc, SField, SNodeRef, SVal};
 use tokio::{sync::Mutex, task::JoinSet};
 use walkdir::{DirEntry, WalkDir};
@@ -129,13 +130,14 @@ fn zip_directory<T: Write + Seek>(iter: &mut dyn Iterator<Item = DirEntry>, pref
         
         // don't add/publish any files that are in the reserved __stof__ directory
         let display = path.display().to_string();
-        println!("{}", display);
         if display.contains("__stof__") {
             continue;
         }
         for exclude in excluded {
-            if display.contains(exclude) {
-                continue 'entries;
+            if let Ok(re) = Regex::new(&exclude) {
+                if re.is_match(&display) {
+                    continue 'entries;
+                }
             }
         }
 

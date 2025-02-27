@@ -24,7 +24,7 @@ homepage: "https://stof.dev"
 keywords: ["stof", "formata"]
 
 imports: ["point.stof", "box.stof"]
-exclude: ["excluded.stof"]
+exclude: ["excluded.stof$"]
 
 // Registries in which we are publishing this package to
 publish: [
