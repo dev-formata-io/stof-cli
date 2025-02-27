@@ -14,6 +14,12 @@
 // limitations under the License.
 //
 
+mod publish;
+use publish::{publish_package, unpublish_package};
+
+mod add;
+use add::add_package;
+
 use std::sync::Arc;
 use clap::{Parser, Subcommand};
 use colored::Colorize;
@@ -56,10 +62,34 @@ enum Command {
         #[arg(short, long)]
         allow: Vec<String>,
     },
+    Publish {
+        /// Package directory, containing pkg.stof file.
+        /// Default is to use the current working directory.
+        dir: Option<String>,
+    },
+    Unpublish {
+        /// Package directory, containing pkg.stof file.
+        /// Default is to use the current working directory.
+        dir: Option<String>,
+    },
+    Add {
+        /// Package to add.
+        package: String,
+
+        /// Package directory, containing pkg.stof file.
+        /// Default is to use the current working directory.
+        dir: Option<String>,
+
+        /// Registry name.
+        /// Registry with a #[default] attribute is used by default.
+        #[arg(short, long)]
+        registry: Option<String>,
+    },
 }
 
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let cli = Cli::parse();
     match cli.command {
         Command::Run { file, allow } => {
@@ -83,6 +113,27 @@ fn main() {
         Command::Serve { file, allow } => {
             let doc = create_doc(&file, &allow);
             serve(doc); // start HTTP server with this document
+        },
+        Command::Publish { dir } => {
+            let mut pkg_dir = "./".to_string();
+            if let Some(dir) = dir {
+                pkg_dir = dir;
+            }
+            publish_package(&pkg_dir).await;
+        },
+        Command::Unpublish { dir } => {
+            let mut pkg_dir = "./".to_string();
+            if let Some(dir) = dir {
+                pkg_dir = dir;
+            }
+            unpublish_package(&pkg_dir).await;
+        },
+        Command::Add { dir, registry, package } => {
+            let mut pkg_dir = "./".to_string();
+            if let Some(dir) = dir {
+                pkg_dir = dir;
+            }
+            add_package(&pkg_dir, &package, registry).await;
         },
     }
 }
