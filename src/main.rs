@@ -20,6 +20,9 @@ use publish::{publish_package, unpublish_package};
 mod add;
 use add::add_package;
 
+mod remote;
+use remote::{remote_exec, remote_exec_doc};
+
 use std::{path::PathBuf, sync::Arc};
 use clap::{Parser, Subcommand};
 use colored::Colorize;
@@ -39,26 +42,34 @@ struct Cli {
 #[derive(Subcommand, Debug)]
 enum Command {
     Run {
-        /// Path to file or package directory to run.
+        /// Path to file or package directory (pkg.stof) to run.
         path: Option<String>,
 
-        /// Allow list.
+        /// Run on a remote server.
+        #[arg(short, long, value_name = "ADDRESS")]
+        on: Option<String>,
+
+        /// When running on a remote server, should the file/package be parsed locally?
+        #[arg(short = 'l', long)]
+        parse_local: bool,
+
+        /// Library allow list. Ex. "http" enables the HTTP library.
         #[arg(short, long)]
         allow: Vec<String>,
     },
     Test {
-        /// Path to file or package directory to test.
+        /// Path to file or package directory (pkg.stof) to test.
         path: Option<String>,
 
-        /// Allow list.
+        /// Library allow list. Ex. "http" enables the HTTP library.
         #[arg(short, long)]
         allow: Vec<String>,
     },
     Serve {
-        /// Path to file or package directory to serve.
+        /// Path to file or package directory (pkg.stof) to serve.
         path: Option<String>,
 
-        /// Allow list.
+        /// Library allow list. Ex. "http" enables the HTTP library.
         #[arg(short, long)]
         allow: Vec<String>,
     },
@@ -92,7 +103,20 @@ enum Command {
 async fn main() {
     let cli = Cli::parse();
     match cli.command {
-        Command::Run { path, allow } => {
+        Command::Run { path, on, allow, parse_local } => {
+            // Execute the entire run command remotely if requested
+            if !parse_local && on.is_some() {
+                if let Some(remote_address) = on {
+                    if let Some(path) = path {
+                        remote_exec(&remote_address, &path).await;
+                    } else {
+                        remote_exec(&remote_address, "").await;
+                    }
+                    return;
+                }
+            }
+
+            // Create the document that will be ran
             let mut doc;
             if let Some(path) = path {
                 doc = create_doc(&path, &allow);
@@ -100,6 +124,13 @@ async fn main() {
                 doc = create_doc("", &allow);
             }
 
+            // Execute this document remotely
+            if let Some(remote_address) = on {
+                remote_exec_doc(&remote_address, &doc).await;
+                return;
+            }
+
+            // Run the document locally
             let res = doc.run(None);
             match res {
                 Ok(_) => {
