@@ -20,10 +20,10 @@ use publish::{publish_package, unpublish_package};
 mod add;
 use add::add_package;
 
-use std::sync::Arc;
+use std::{path::PathBuf, sync::Arc};
 use clap::{Parser, Subcommand};
 use colored::Colorize;
-use stof::SDoc;
+use stof::{lang::SError, SDoc};
 use stof_github::{GitHubFormat, GitHubLibrary};
 use stof_http::{server::serve, HTTPLibrary};
 
@@ -39,24 +39,24 @@ struct Cli {
 #[derive(Subcommand, Debug)]
 enum Command {
     Run {
-        /// File to run.
-        file: String,
+        /// Path to file or package directory to run.
+        path: Option<String>,
 
         /// Allow list.
         #[arg(short, long)]
         allow: Vec<String>,
     },
     Test {
-        /// File to test.
-        file: String,
+        /// Path to file or package directory to test.
+        path: Option<String>,
 
         /// Allow list.
         #[arg(short, long)]
         allow: Vec<String>,
     },
     Serve {
-        /// File to test.
-        file: String,
+        /// Path to file or package directory to serve.
+        path: Option<String>,
 
         /// Allow list.
         #[arg(short, long)]
@@ -92,8 +92,14 @@ enum Command {
 async fn main() {
     let cli = Cli::parse();
     match cli.command {
-        Command::Run { file, allow } => {
-            let mut doc = create_doc(&file, &allow);
+        Command::Run { path, allow } => {
+            let mut doc;
+            if let Some(path) = path {
+                doc = create_doc(&path, &allow);
+            } else {
+                doc = create_doc("", &allow);
+            }
+
             let res = doc.run(None);
             match res {
                 Ok(_) => {
@@ -102,16 +108,28 @@ async fn main() {
                 Err(res) => println!("{res}"),
             }
         },
-        Command::Test { file, allow } => {
-            let mut doc = create_doc(&file, &allow);
+        Command::Test { path, allow } => {
+            let mut doc;
+            if let Some(path) = path {
+                doc = create_doc(&path, &allow);
+            } else {
+                doc = create_doc("", &allow);
+            }
+
             let res = doc.run_tests(false, None);
             match res {
                 Ok(res) => println!("{res}"),
                 Err(res) => println!("{res}"),
             }
         },
-        Command::Serve { file, allow } => {
-            let doc = create_doc(&file, &allow);
+        Command::Serve { path, allow } => {
+            let doc;
+            if let Some(path) = path {
+                doc = create_doc(&path, &allow);
+            } else {
+                doc = create_doc("", &allow);
+            }
+
             serve(doc); // start HTTP server with this document
         },
         Command::Publish { dir } => {
@@ -141,13 +159,35 @@ async fn main() {
 
 /// Create a stof document from a file path.
 fn create_doc(path: &str, allow: &Vec<String>) -> SDoc {
-    let path_split = path.split('.').collect::<Vec<&str>>();
-    let format = *path_split.last().unwrap();
+    let path_buf;
+    if path.len() > 0 {
+        path_buf = PathBuf::from(path);
+    } else if let Ok(buf) = std::env::current_dir() {
+        path_buf = buf;
+    } else {
+        panic!("{} {}: {}", "parse error".red(), path.blue(), "no directory or path found".dimmed());
+    }
     
     let mut doc = SDoc::default();
     allow_libs(&mut doc, allow);
 
-    let res = doc.file_import("main", format, path, format, "");
+    let res;
+    if path_buf.is_dir() {
+        res = doc.file_import("main", "pkg", path_buf.to_str().unwrap(), "stof", "");
+    } else if let Some(format) = path_buf.extension() {
+        if let Some(format) = format.to_str() {
+            // If trying to create a doc from a zip pkg file, use the pkg format
+            let mut import_format = format.to_owned();
+            if format == "zip" { import_format = "pkg".to_owned(); }
+
+            res = doc.file_import("main", &import_format, path_buf.to_str().unwrap(), format, "");
+        } else {
+            res = Err(SError::custom("main", &doc, "FormatError", "could not retrieve import format"));
+        }
+    } else {
+        res = Err(SError::custom("main", &doc, "FormatError", "could not determin import extension"));
+    }
+
     match res {
         Ok(_) => {
             doc

@@ -14,7 +14,7 @@
 // limitations under the License.
 //
 
-fn imported(): bool {
-    pln('imported');
-    return true;
+#[main]
+fn main() {
+    pln('Hello, PKG!!!!');
 }
