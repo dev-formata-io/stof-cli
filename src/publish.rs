@@ -205,7 +205,7 @@ pub(crate) async fn publish_package(dir: &str) {
                 }
             }
             let _ = fs::remove_file(&temp_zip_file_path);
-            println!("{}", "publish success".green());
+            println!("{}", "publish complete".green());
         } else {
             println!("{}: {}", "publish error".red(), "failed to zip package directory".italic().dimmed());
         }
@@ -239,7 +239,7 @@ async fn publish_to_registry(pkg: Arc<Mutex<(SDoc, Bytes)>>, registry: SNodeRef,
         match res {
             Ok(resp) => {
                 let text = resp.text().await.unwrap();
-                println!("{} ... {}", url.blue(), text.italic().dimmed());
+                println!("{} {} ... {}", "publishing to".purple(), url.blue(), text.italic().dimmed());
             },
             Err(error) => {
                 println!("{}: {}", "publish send error".red(), error.to_string().italic().dimmed());
