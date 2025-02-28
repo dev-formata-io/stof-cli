@@ -21,13 +21,151 @@ use stof::{pkg::PKG, SDoc, SField, SNodeRef, SVal};
 use tokio::{sync::Mutex, task::JoinSet};
 
 
+/// Create a temp zip (pkg) file for a given directory.
+pub(crate) async fn create_pkg_zip(dir: &str, out_path: &str, overwrite: bool) -> Option<String> {
+    let pkg_path = format!("{}/pkg.stof", dir);
+    if let Ok(pkg_doc) = SDoc::file(&pkg_path, "stof") {
+        let mut excluded = HashSet::new();
+        let mut included = HashSet::new();
+        if let Some(include_array) = SField::field(&pkg_doc.graph, "root.include", '.', None) {
+            match &include_array.value {
+                SVal::Array(vals) => {
+                    for val in vals {
+                        match val {
+                            SVal::String(include) => {
+                                included.insert(include.clone());
+                            },
+                            _ => {}
+                        }
+                    }
+                },
+                SVal::Set(vals) => {
+                    for val in vals {
+                        match val {
+                            SVal::String(include) => {
+                                included.insert(include.clone());
+                            },
+                            _ => {}
+                        }
+                    }
+                },
+                _ => {}
+            }
+        }
+        if let Some(exclude_array) = SField::field(&pkg_doc.graph, "root.exclude", '.', None) {
+            match &exclude_array.value {
+                SVal::Array(vals) => {
+                    for val in vals {
+                        match val {
+                            SVal::String(exclude) => {
+                                excluded.insert(exclude.clone());
+                            },
+                            _ => {}
+                        }
+                    }
+                },
+                SVal::Set(vals) => {
+                    for val in vals {
+                        match val {
+                            SVal::String(exclude) => {
+                                excluded.insert(exclude.clone());
+                            },
+                            _ => {}
+                        }
+                    }
+                },
+                _ => {}
+            }
+        }
+
+        let mut path = out_path.to_string();
+        if !path.ends_with(".pkg") { path = format!("{}.pkg", path); }
+
+        if fs::exists(&path).unwrap() {
+            if !overwrite {
+                return None;
+            }
+            let _ = fs::remove_file(&path);
+        }
+
+        return PKG::create_package_zip(dir, &out_path, &included, &excluded);
+    }
+    None
+}
+
+
+/// Create a temp zip (pkg) file for a given directory.
+pub(crate) async fn create_temp_pkg_zip(dir: &str) -> Option<String> {
+    let pkg_path = format!("{}/pkg.stof", dir);
+    if let Ok(pkg_doc) = SDoc::file(&pkg_path, "stof") {
+        let mut excluded = HashSet::new();
+        let mut included = HashSet::new();
+        if let Some(include_array) = SField::field(&pkg_doc.graph, "root.include", '.', None) {
+            match &include_array.value {
+                SVal::Array(vals) => {
+                    for val in vals {
+                        match val {
+                            SVal::String(include) => {
+                                included.insert(include.clone());
+                            },
+                            _ => {}
+                        }
+                    }
+                },
+                SVal::Set(vals) => {
+                    for val in vals {
+                        match val {
+                            SVal::String(include) => {
+                                included.insert(include.clone());
+                            },
+                            _ => {}
+                        }
+                    }
+                },
+                _ => {}
+            }
+        }
+        if let Some(exclude_array) = SField::field(&pkg_doc.graph, "root.exclude", '.', None) {
+            match &exclude_array.value {
+                SVal::Array(vals) => {
+                    for val in vals {
+                        match val {
+                            SVal::String(exclude) => {
+                                excluded.insert(exclude.clone());
+                            },
+                            _ => {}
+                        }
+                    }
+                },
+                SVal::Set(vals) => {
+                    for val in vals {
+                        match val {
+                            SVal::String(exclude) => {
+                                excluded.insert(exclude.clone());
+                            },
+                            _ => {}
+                        }
+                    }
+                },
+                _ => {}
+            }
+        }
+
+        let pkg_format = PKG::default();
+        if let Some(temp_zip_file_path) = pkg_format.create_temp_zip(dir, &included, &excluded) {
+            return Some(temp_zip_file_path);
+        }
+    }
+    None
+}
+
+
 /// Publish a stof package to registries.
 pub(crate) async fn publish_package(dir: &str) {
     let pkg_path = format!("{}/pkg.stof", dir);
     if let Ok(pkg_doc) = SDoc::file(&pkg_path, "stof") {
         let mut pkg_path = String::default();
         let mut publish_registries = Vec::new();
-        let mut excluded = HashSet::new();
 
         if let Some(name_field) = SField::field(&pkg_doc.graph, "root.name", '.', None) {
             let pkg_name = name_field.to_string();
@@ -48,32 +186,6 @@ pub(crate) async fn publish_package(dir: &str) {
                     _ => {}
                 }
             }
-
-            if let Some(exclude_array) = SField::field(&pkg_doc.graph, "root.exclude", '.', None) {
-                match &exclude_array.value {
-                    SVal::Array(vals) => {
-                        for val in vals {
-                            match val {
-                                SVal::String(exclude) => {
-                                    excluded.insert(exclude.clone());
-                                },
-                                _ => {}
-                            }
-                        }
-                    },
-                    SVal::Set(vals) => {
-                        for val in vals {
-                            match val {
-                                SVal::String(exclude) => {
-                                    excluded.insert(exclude.clone());
-                                },
-                                _ => {}
-                            }
-                        }
-                    },
-                    _ => {}
-                }
-            }
         }
 
         if publish_registries.len() < 1 || pkg_path.len() < 1 {
@@ -81,9 +193,7 @@ pub(crate) async fn publish_package(dir: &str) {
             return;
         }
 
-        // Zip up the package directory so that it can be published
-        let pkg_format = PKG::default();
-        if let Some(temp_zip_file_path) = pkg_format.create_temp_zip(dir, &excluded) {
+        if let Some(temp_zip_file_path) = create_temp_pkg_zip(dir).await {
             if let Ok(bytes) = fs::read(&temp_zip_file_path) {
                 let pkg = Arc::new(Mutex::new((pkg_doc, Bytes::from(bytes))));
                 let mut set = JoinSet::new();

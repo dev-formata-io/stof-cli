@@ -15,10 +15,10 @@
 //
 
 mod publish;
-use publish::{publish_package, unpublish_package};
+use publish::{create_pkg_zip, publish_package, unpublish_package};
 
 mod add;
-use add::add_package;
+use add::{add_package, remove_package};
 
 mod remote;
 use remote::{remote_exec, remote_exec_doc};
@@ -41,8 +41,10 @@ struct Cli {
 
 #[derive(Subcommand, Debug)]
 enum Command {
+    /// Run a file or package, calling all #[main] functions.
+    /// Optionally, this command can be used to run stof remotely.
     Run {
-        /// Path to file or package directory (pkg.stof) to run.
+        /// Path to file or package directory to run.
         path: Option<String>,
 
         /// Run on a remote server.
@@ -57,32 +59,42 @@ enum Command {
         #[arg(short, long)]
         allow: Vec<String>,
     },
+
+    /// Test a file or package, running all #[test] functions.
     Test {
-        /// Path to file or package directory (pkg.stof) to test.
+        /// Path to file or package directory to test.
         path: Option<String>,
 
         /// Library allow list. Ex. "http" enables the HTTP library.
         #[arg(short, long)]
         allow: Vec<String>,
     },
+
+    /// Serve a file or package using the HTTP library server.
     Serve {
-        /// Path to file or package directory (pkg.stof) to serve.
+        /// Path to file or package directory to serve.
         path: Option<String>,
 
         /// Library allow list. Ex. "http" enables the HTTP library.
         #[arg(short, long)]
         allow: Vec<String>,
     },
+
+    /// Publish this package to each registry defined in the pkg.stof publish array.
     Publish {
         /// Package directory, containing pkg.stof file.
         /// Default is to use the current working directory.
         dir: Option<String>,
     },
+
+    /// Unpublish this package from each registry defined in the pkg.stof publish array.
     Unpublish {
         /// Package directory, containing pkg.stof file.
         /// Default is to use the current working directory.
         dir: Option<String>,
     },
+
+    /// Add a remote package to this workspace, placed within the __stof__ directory for import access via "@path" syntax.
     Add {
         /// Package to add.
         package: String,
@@ -95,6 +107,22 @@ enum Command {
         /// Registry with a #[default] attribute is used by default.
         #[arg(short, long)]
         registry: Option<String>,
+    },
+
+    /// Remove a package from this workspace.
+    Remove {
+        /// Package to remove.
+        package: String,
+    },
+
+    /// Create a package file (.pkg) from a directory that contains a pkg.stof file.
+    Pkg {
+        /// Package directory (containing pkg.stof file) to turn into a package file (.pkg).
+        dir: String,
+
+        /// Optional output file path (.pkg).
+        /// Default is <DIR>.pkg.
+        out: Option<String>,
     },
 }
 
@@ -182,7 +210,25 @@ async fn main() {
             if let Some(dir) = dir {
                 pkg_dir = dir;
             }
-            add_package(&pkg_dir, &package, registry).await;
+            add_package(&pkg_dir, &package, registry, false).await;
+        },
+        Command::Remove { package } => {
+            if remove_package(&package).await {
+                println!("{} {}", "removed".green(), package.blue());
+            } else {
+                println!("{} {}", "failed to remove".red(), package.blue());
+            }
+        },
+        Command::Pkg { dir, out } => {
+            let mut out_path = dir.clone();
+            if let Some(out) = out {
+                out_path = out;
+            }
+            if let Some(path) = create_pkg_zip(&dir, &out_path, true).await {
+                println!("{} {}", "created".green(), path.blue());
+            } else {
+                println!("{}", "pkg creation error".red());
+            }
         },
     }
 }

@@ -14,12 +14,20 @@
 // limitations under the License.
 //
 
+use std::fs;
 use colored::Colorize;
 use stof::{pkg::PKG, SDoc, SField, SVal};
 
 
+/// Remove a stof package from this workspace.
+pub(crate) async fn remove_package(pkg_dir_path: &str) -> bool {
+    let path = format!("__stof__/{}", pkg_dir_path.trim_start_matches("@"));
+    fs::remove_dir_all(path).is_ok()
+}
+
+
 /// Publish a stof package to registries.
-pub(crate) async fn add_package(pkg_dir: &str, download_pkg: &str, registry: Option<String>) {
+pub(crate) async fn add_package(pkg_dir: &str, download_pkg: &str, registry: Option<String>, dependency: bool) {
     let pkg_path = format!("{}/pkg.stof", pkg_dir);
     if let Ok(pkg_doc) = SDoc::file(&pkg_path, "stof") {
         let mut reg = None;
@@ -63,7 +71,12 @@ pub(crate) async fn add_package(pkg_dir: &str, download_pkg: &str, registry: Opt
                             let pkg_format = PKG::default();
                             let outdir = pkg_format.unzip_pkg_bytes(download_pkg, &bytes);
                             add_dependencies(&outdir, pkg_dir).await;
-                            println!("{}", "successfully added package".green());
+                            
+                            if dependency {
+                                println!("\t{} {} {}", "...".dimmed(), "added dependency".purple(), download_pkg.blue());
+                            } else {
+                                println!("{} {}", "added".green(), download_pkg.blue());
+                            }
                         } else {
                             println!("{}: {}", "publish send error".red(), "could not parse response into bytes".italic().dimmed());
                         }
@@ -94,14 +107,14 @@ async fn add_dependencies(outdir: &str, pkg_dir: &str) {
                     for val in vals {
                         match val {
                             SVal::String(download_pkg) => {
-                                Box::pin(add_package(pkg_dir, download_pkg, None)).await;
+                                Box::pin(add_package(pkg_dir, download_pkg, None, true)).await;
                             },
                             SVal::Object(nref) => {
                                 if let Some(name_field) = SField::field(&added_pkg_doc.graph, "name", '.', Some(nref)) {
                                     if let Some(registry_field) = SField::field(&added_pkg_doc.graph, "registry", '.', Some(nref)) {
-                                        Box::pin(add_package(pkg_dir, &name_field.to_string(), Some(registry_field.to_string()))).await;
+                                        Box::pin(add_package(pkg_dir, &name_field.to_string(), Some(registry_field.to_string()), true)).await;
                                     } else {
-                                        Box::pin(add_package(pkg_dir, &name_field.to_string(), None)).await;
+                                        Box::pin(add_package(pkg_dir, &name_field.to_string(), None, true)).await;
                                     }
                                 }
                             },

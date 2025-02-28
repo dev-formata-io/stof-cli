@@ -14,11 +14,12 @@
 // limitations under the License.
 //
 
-use std::{collections::HashSet, fs, path::PathBuf};
+use std::{fs, path::PathBuf};
 use bytes::Bytes;
 use colored::Colorize;
 use reqwest::header::{HeaderMap, CONTENT_TYPE};
-use stof::{pkg::PKG, SData, SDoc, SFunc};
+use stof::{SData, SDoc, SFunc};
+use crate::publish::create_temp_pkg_zip;
 
 
 /// Execute a stof document or package remotely, parsing/creating it on the remote server.
@@ -40,8 +41,7 @@ pub async fn remote_exec(address: &str, path: &str) {
     let mut bytes = None;
     if path_buf.is_dir() {
         headers.insert(CONTENT_TYPE, "pkg".parse().unwrap());
-        let pkg_format = PKG::default();
-        if let Some(zip_path) = pkg_format.create_temp_zip(path_buf.to_str().unwrap(), &HashSet::new()) {
+        if let Some(zip_path) = create_temp_pkg_zip(path_buf.to_str().unwrap()).await {
             if let Ok(vec) = fs::read(&zip_path) {
                 bytes = Some(Bytes::from(vec));
             }
@@ -149,7 +149,7 @@ pub async fn remote_exec_doc(address: &str, doc: &SDoc) {
                                 println!("{}", text_field.to_string());
                             }
                         }
-                        
+
                         // The document comes back, call all #[local] functions on the main root of the document
                         if let Some(main) = doc.graph.main_root() {
                             let mut to_call = Vec::new();

@@ -14,9 +14,9 @@
 // limitations under the License.
 //
 
-import reg:local "formata/geometry";
+import pkg "@formata/geometry";
 
-#[run]
+#[main]
 fn main() {
     self.message = 'hello, world';
     self.box = new Box {

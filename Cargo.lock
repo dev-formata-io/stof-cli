@@ -1872,9 +1872,9 @@ checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 
 [[package]]
 name = "stof"
-version = "0.3.14"
+version = "0.3.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "579fb75f775add13d3bfda45bb6c4b7ad148135cb54cdd8582bd1a54af99e03f"
+checksum = "c0b3fc61307795a1012d4e38227a8424274f2719e1bb1cbf6227f08aa66b4d83"
 dependencies = [
  "anyhow",
  "bincode",
