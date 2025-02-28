@@ -253,11 +253,7 @@ fn create_doc(path: &str, allow: &Vec<String>) -> SDoc {
         res = doc.file_import("main", "pkg", path_buf.to_str().unwrap(), "stof", "");
     } else if let Some(format) = path_buf.extension() {
         if let Some(format) = format.to_str() {
-            // If trying to create a doc from a zip pkg file, use the pkg format
-            let mut import_format = format.to_owned();
-            if format == "zip" { import_format = "pkg".to_owned(); }
-
-            res = doc.file_import("main", &import_format, path_buf.to_str().unwrap(), format, "");
+            res = doc.file_import("main", format, path_buf.to_str().unwrap(), format, "");
         } else {
             res = Err(SError::custom("main", &doc, "FormatError", "could not retrieve import format"));
         }
