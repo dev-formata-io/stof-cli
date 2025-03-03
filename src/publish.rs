@@ -353,7 +353,6 @@ pub(crate) async fn unpublish_package(dir: &str, registry: Option<String>, usern
                 }
             }
         }
-        println!("{}", "removed package".green());
     } else {
         println!("{}: {}", "unpublish error".red(), "pkg.stof file not found".italic().dimmed());
     }
