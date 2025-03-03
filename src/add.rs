@@ -16,6 +16,8 @@
 
 use std::fs;
 use colored::Colorize;
+use http_auth_basic::Credentials;
+use reqwest::header::{HeaderMap, AUTHORIZATION};
 use stof::{pkg::PKG, SDoc, SField, SVal};
 
 
@@ -27,12 +29,12 @@ pub(crate) async fn remove_package(pkg_dir_path: &str) -> bool {
 
 
 /// Publish a stof package to registries.
-pub(crate) async fn add_package(pkg_dir: &str, download_pkg: &str, registry: Option<String>, dependency: bool) {
+pub(crate) async fn add_package(pkg_dir: &str, download_pkg: &str, registry: Option<String>, dependency: bool, username: Option<String>, password: Option<String>) {
     let pkg_path = format!("{}/pkg.stof", pkg_dir);
     if let Ok(pkg_doc) = SDoc::file(&pkg_path, "stof") {
         let mut reg = None;
         if let Some(reg_name) = registry {
-            let path = format!("root.add.{}", reg_name);
+            let path = format!("root.registries.{}", reg_name);
             if let Some(field) = SField::field(&pkg_doc.graph, &path, '.', None) {
                 match &field.value {
                     SVal::Object(nref) => {
@@ -43,7 +45,7 @@ pub(crate) async fn add_package(pkg_dir: &str, download_pkg: &str, registry: Opt
             }
         } else {
             // look for default registry (or first one present)
-            if let Some(nref) = pkg_doc.graph.node_ref("root/add", None) {
+            if let Some(nref) = pkg_doc.graph.node_ref("root/registries", None) {
                 for field in SField::fields(&pkg_doc.graph, &nref) {
                     match &field.value {
                         SVal::Object(nref) => {
@@ -64,21 +66,36 @@ pub(crate) async fn add_package(pkg_dir: &str, download_pkg: &str, registry: Opt
                 let download = download_pkg.trim_start_matches("@").to_owned();
                 let url = format!("{}/registry/{}", url_field.to_string(), download);
                 let client = reqwest::Client::new();
-                let res = client.get(&url).send().await;
+
+                let mut headers = HeaderMap::new();
+                if username.is_some() && password.is_some() {
+                    let credentials = Credentials::new(&username.clone().unwrap(), &password.clone().unwrap());
+                    headers.insert(AUTHORIZATION, credentials.as_http_header().parse().unwrap());
+                }
+
+                let res = client.get(&url)
+                    .headers(headers)
+                    .send()
+                    .await;
+
                 match res {
                     Ok(response) => {
-                        if let Ok(bytes) = response.bytes().await {
-                            let pkg_format = PKG::default();
-                            let outdir = pkg_format.unzip_pkg_bytes(download_pkg, &bytes);
-                            add_dependencies(&outdir, pkg_dir).await;
-                            
-                            if dependency {
-                                println!("\t{} {} {}", "...".dimmed(), "added dependency".purple(), download_pkg.blue());
+                        if response.status().is_success() {
+                            if let Ok(bytes) = response.bytes().await {
+                                let pkg_format = PKG::default();
+                                let outdir = pkg_format.unzip_pkg_bytes(download_pkg, &bytes);
+                                add_dependencies(&outdir, pkg_dir, username, password).await;
+                                
+                                if dependency {
+                                    println!("\t{} {} {}", "...".dimmed(), "added dependency".purple(), download_pkg.blue());
+                                } else {
+                                    println!("{} {}", "added".green(), download_pkg.blue());
+                                }
                             } else {
-                                println!("{} {}", "added".green(), download_pkg.blue());
+                                println!("{}: {}", "publish send error".red(), "could not parse response into bytes".italic().dimmed());
                             }
                         } else {
-                            println!("{}: {}", "publish send error".red(), "could not parse response into bytes".italic().dimmed());
+                            println!("{}: {} {}", "publish send error".red(), download_pkg.blue(), "does not exist or not authenticated".italic().dimmed());
                         }
                     },
                     Err(error) => {
@@ -98,7 +115,7 @@ pub(crate) async fn add_package(pkg_dir: &str, download_pkg: &str, registry: Opt
 
 
 /// Add dependencies for the newly added package.
-async fn add_dependencies(outdir: &str, pkg_dir: &str) {
+async fn add_dependencies(outdir: &str, pkg_dir: &str, username: Option<String>, password: Option<String>) {
     let added_pkg_path = format!("{}/pkg.stof", outdir);
     if let Ok(added_pkg_doc) = SDoc::file(&added_pkg_path, "stof") {
         if let Some(deps_field) = SField::field(&added_pkg_doc.graph, "root.dependencies", '.', None) {
@@ -107,14 +124,14 @@ async fn add_dependencies(outdir: &str, pkg_dir: &str) {
                     for val in vals {
                         match val {
                             SVal::String(download_pkg) => {
-                                Box::pin(add_package(pkg_dir, download_pkg, None, true)).await;
+                                Box::pin(add_package(pkg_dir, download_pkg, None, true, username.clone(), password.clone())).await;
                             },
                             SVal::Object(nref) => {
                                 if let Some(name_field) = SField::field(&added_pkg_doc.graph, "name", '.', Some(nref)) {
                                     if let Some(registry_field) = SField::field(&added_pkg_doc.graph, "registry", '.', Some(nref)) {
-                                        Box::pin(add_package(pkg_dir, &name_field.to_string(), Some(registry_field.to_string()), true)).await;
+                                        Box::pin(add_package(pkg_dir, &name_field.to_string(), Some(registry_field.to_string()), true, username.clone(), password.clone())).await;
                                     } else {
-                                        Box::pin(add_package(pkg_dir, &name_field.to_string(), None, true)).await;
+                                        Box::pin(add_package(pkg_dir, &name_field.to_string(), None, true, username.clone(), password.clone())).await;
                                     }
                                 }
                             },

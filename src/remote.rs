@@ -17,13 +17,14 @@
 use std::{fs, path::PathBuf};
 use bytes::Bytes;
 use colored::Colorize;
-use reqwest::header::{HeaderMap, CONTENT_TYPE};
+use http_auth_basic::Credentials;
+use reqwest::header::{HeaderMap, AUTHORIZATION, CONTENT_TYPE};
 use stof::{SData, SDoc, SFunc};
 use crate::publish::create_temp_pkg_zip;
 
 
 /// Execute a stof document or package remotely, parsing/creating it on the remote server.
-pub async fn remote_exec(address: &str, path: &str) {
+pub async fn remote_exec(address: &str, path: &str, username: Option<String>, password: Option<String>) {
     let path_buf;
     if path.len() > 0 {
         path_buf = PathBuf::from(path);
@@ -37,6 +38,10 @@ pub async fn remote_exec(address: &str, path: &str) {
     let url = format!("{}/run", address);
     let client = reqwest::Client::new();
     let mut headers = HeaderMap::new();
+    if username.is_some() && password.is_some() {
+        let credentials = Credentials::new(&username.unwrap(), &password.unwrap());
+        headers.insert(AUTHORIZATION, credentials.as_http_header().parse().unwrap());
+    }
 
     let mut bytes = None;
     if path_buf.is_dir() {
@@ -116,12 +121,16 @@ pub async fn remote_exec(address: &str, path: &str) {
 
 
 /// Execute a stof document remotely after it's already been parsed/created.
-pub async fn remote_exec_doc(address: &str, doc: &SDoc) {
+pub async fn remote_exec_doc(address: &str, doc: &SDoc, username: Option<String>, password: Option<String>) {
     let bytes = doc.export_bytes("main", "bstof", None).unwrap();
     let url = format!("{}/run", address);
 
     let client = reqwest::Client::new();
     let mut headers = HeaderMap::new();
+    if username.is_some() && password.is_some() {
+        let credentials = Credentials::new(&username.unwrap(), &password.unwrap());
+        headers.insert(AUTHORIZATION, credentials.as_http_header().parse().unwrap());
+    }
     headers.insert(CONTENT_TYPE, "application/bstof".parse().unwrap());
 
     let res = client.post(url)
@@ -174,5 +183,69 @@ pub async fn remote_exec_doc(address: &str, doc: &SDoc) {
         Err(error) => {
             eprintln!("{}: {}", "remote exec error".red(), error.to_string().dimmed());
         },
+    }
+}
+
+/// Set remote user.
+/// Need admin permissions on the server, along with the user information to create/set.
+/// Perms: 0b001 - read registry, 0b010 - modify registry, 0b100 - exec
+/// Scope: optional, restricts modification of the registry to a specific top-level scope for a user. Ex. "formata" would allow modification to only @formata/... packages.
+pub async fn set_remote_user(address: &str, admin_user: &str, admin_pass: &str, user: &str, pass: &str, perms: i64, scope: &str) {
+    let url = format!("{}/admin/users", address);
+    let payload = format!("username: '{}', password: '{}', perms: {}, scope: '{}'", user, pass, perms, scope);
+    
+    let mut headers = HeaderMap::new();
+    let credentials = Credentials::new(admin_user, admin_pass);
+    headers.insert(AUTHORIZATION, credentials.as_http_header().parse().unwrap());
+    headers.insert(CONTENT_TYPE, "application/stof".parse().unwrap());
+
+    let client = reqwest::Client::new();
+    let res = client.post(url)
+        .headers(headers)
+        .body(payload)
+        .send().await;
+
+    match res {
+        Ok(response) => {
+            if let Ok(text) = response.text().await {
+                println!("{}", text);
+            } else {
+                println!("success, but non-textual response");
+            }
+        },
+        Err(error) => {
+            eprintln!("{}", error.to_string().red());
+        }
+    }
+}
+
+/// Remove remote user.
+/// Need admin permissions on the server, along with the username to delete.
+pub async fn remove_remote_user(address: &str, admin_user: &str, admin_pass: &str, user: &str) {
+    let url = format!("{}/admin/users", address);
+    let payload = format!("username: '{}'", user);
+    
+    let mut headers = HeaderMap::new();
+    let credentials = Credentials::new(admin_user, admin_pass);
+    headers.insert(AUTHORIZATION, credentials.as_http_header().parse().unwrap());
+    headers.insert(CONTENT_TYPE, "application/stof".parse().unwrap());
+
+    let client = reqwest::Client::new();
+    let res = client.delete(url)
+        .headers(headers)
+        .body(payload)
+        .send().await;
+
+    match res {
+        Ok(response) => {
+            if let Ok(text) = response.text().await {
+                println!("{}", text);
+            } else {
+                println!("success, but non-textual response");
+            }
+        },
+        Err(error) => {
+            eprintln!("{}", error.to_string().red());
+        }
     }
 }

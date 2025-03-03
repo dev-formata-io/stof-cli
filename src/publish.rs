@@ -17,6 +17,8 @@
 use std::{collections::HashSet, fs, sync::Arc};
 use bytes::Bytes;
 use colored::Colorize;
+use http_auth_basic::Credentials;
+use reqwest::header::{HeaderMap, AUTHORIZATION};
 use stof::{pkg::PKG, SDoc, SField, SNodeRef, SVal};
 use tokio::{sync::Mutex, task::JoinSet};
 
@@ -161,7 +163,7 @@ pub(crate) async fn create_temp_pkg_zip(dir: &str) -> Option<String> {
 
 
 /// Publish a stof package to registries.
-pub(crate) async fn publish_package(dir: &str) {
+pub(crate) async fn publish_package(dir: &str, registry: Option<String>, username: Option<String>, password: Option<String>) {
     let pkg_path = format!("{}/pkg.stof", dir);
     if let Ok(pkg_doc) = SDoc::file(&pkg_path, "stof") {
         let mut pkg_path = String::default();
@@ -171,20 +173,36 @@ pub(crate) async fn publish_package(dir: &str) {
             let pkg_name = name_field.to_string();
             pkg_path = pkg_name.trim_start_matches("@").to_owned();
 
-            if let Some(publish_array) = SField::field(&pkg_doc.graph, "root.publish", '.', None) {
-                match &publish_array.value {
-                    SVal::Array(vals) => {
-                        for val in vals {
-                            match val {
-                                SVal::Object(nref) => {
-                                    publish_registries.push(nref.clone());
-                                },
-                                _ => {}
-                            }
-                        }
-                    },
-                    _ => {}
+            let mut reg = None;
+            if let Some(reg_name) = registry {
+                let path = format!("root.registries.{}", reg_name);
+                if let Some(field) = SField::field(&pkg_doc.graph, &path, '.', None) {
+                    match &field.value {
+                        SVal::Object(nref) => {
+                            reg = Some(nref.clone());
+                        },
+                        _ => {}
+                    }
                 }
+            } else {
+                // look for default registry (or first one present)
+                if let Some(nref) = pkg_doc.graph.node_ref("root/registries", None) {
+                    for field in SField::fields(&pkg_doc.graph, &nref) {
+                        match &field.value {
+                            SVal::Object(nref) => {
+                                if reg.is_none() {
+                                    reg = Some(nref.clone());
+                                } else if field.attributes.contains_key("default") {
+                                    reg = Some(nref.clone());
+                                }
+                            },
+                            _ => {}
+                        }
+                    }
+                }
+            }
+            if reg.is_some() {
+                publish_registries.push(reg.unwrap());
             }
         }
 
@@ -198,14 +216,13 @@ pub(crate) async fn publish_package(dir: &str) {
                 let pkg = Arc::new(Mutex::new((pkg_doc, Bytes::from(bytes))));
                 let mut set = JoinSet::new();
                 for reg in publish_registries {
-                    set.spawn(publish_to_registry(pkg.clone(), reg, pkg_path.clone()));
+                    set.spawn(publish_to_registry(pkg.clone(), reg, pkg_path.clone(), username.clone(), password.clone()));
                 }
                 while let Some(_res) = set.join_next().await {
                     // don't need anything here currently...
                 }
             }
             let _ = fs::remove_file(&temp_zip_file_path);
-            println!("{}", "publish complete".green());
         } else {
             println!("{}: {}", "publish error".red(), "failed to zip package directory".italic().dimmed());
         }
@@ -216,7 +233,7 @@ pub(crate) async fn publish_package(dir: &str) {
 
 
 /// Publish the package to a specific registry.
-async fn publish_to_registry(pkg: Arc<Mutex<(SDoc, Bytes)>>, registry: SNodeRef, publish_path: String) {
+async fn publish_to_registry(pkg: Arc<Mutex<(SDoc, Bytes)>>, registry: SNodeRef, publish_path: String, username: Option<String>, password: Option<String>) {
     let mut url = String::default();
     let bytes;
     {
@@ -232,10 +249,19 @@ async fn publish_to_registry(pkg: Arc<Mutex<(SDoc, Bytes)>>, registry: SNodeRef,
     if bytes.len() > 0 && url.len() > 0 {
         let url = format!("{}/registry/{}", url, publish_path);
         let client = reqwest::Client::new();
+        
+        let mut headers = HeaderMap::new();
+        if username.is_some() && password.is_some() {
+            let credentials = Credentials::new(&username.unwrap(), &password.unwrap());
+            headers.insert(AUTHORIZATION, credentials.as_http_header().parse().unwrap());
+        }
+
         let res = client.put(&url)
+            .headers(headers)
             .body(bytes)
             .send()
             .await;
+
         match res {
             Ok(resp) => {
                 let text = resp.text().await.unwrap();
@@ -252,7 +278,7 @@ async fn publish_to_registry(pkg: Arc<Mutex<(SDoc, Bytes)>>, registry: SNodeRef,
 
 
 /// Unpublish a stof package to registries.
-pub(crate) async fn unpublish_package(dir: &str) {
+pub(crate) async fn unpublish_package(dir: &str, registry: Option<String>, username: Option<String>, password: Option<String>) {
     let pkg_path = format!("{}/pkg.stof", dir);
     if let Ok(pkg_doc) = SDoc::file(&pkg_path, "stof") {
         let mut pkg_path = String::default();
@@ -262,20 +288,36 @@ pub(crate) async fn unpublish_package(dir: &str) {
             let pkg_name = name_field.to_string();
             pkg_path = pkg_name.trim_start_matches("@").to_owned();
 
-            if let Some(publish_array) = SField::field(&pkg_doc.graph, "root.publish", '.', None) {
-                match &publish_array.value {
-                    SVal::Array(vals) => {
-                        for val in vals {
-                            match val {
-                                SVal::Object(nref) => {
-                                    publish_registries.push(nref.clone());
-                                },
-                                _ => {}
-                            }
-                        }
-                    },
-                    _ => {}
+            let mut reg = None;
+            if let Some(reg_name) = registry {
+                let path = format!("root.registries.{}", reg_name);
+                if let Some(field) = SField::field(&pkg_doc.graph, &path, '.', None) {
+                    match &field.value {
+                        SVal::Object(nref) => {
+                            reg = Some(nref.clone());
+                        },
+                        _ => {}
+                    }
                 }
+            } else {
+                // look for default registry (or first one present)
+                if let Some(nref) = pkg_doc.graph.node_ref("root/registries", None) {
+                    for field in SField::fields(&pkg_doc.graph, &nref) {
+                        match &field.value {
+                            SVal::Object(nref) => {
+                                if reg.is_none() {
+                                    reg = Some(nref.clone());
+                                } else if field.attributes.contains_key("default") {
+                                    reg = Some(nref.clone());
+                                }
+                            },
+                            _ => {}
+                        }
+                    }
+                }
+            }
+            if reg.is_some() {
+                publish_registries.push(reg.unwrap());
             }
         }
 
@@ -288,7 +330,18 @@ pub(crate) async fn unpublish_package(dir: &str) {
         for registry in publish_registries {
             if let Some(url_field) = SField::field(&pkg_doc.graph, "registry.url", '.', Some(&registry)) {
                 let url = format!("{}/registry/{}", url_field.to_string(), &pkg_path);
-                let res = client.delete(&url).send().await;
+
+                let mut headers = HeaderMap::new();
+                if username.is_some() && password.is_some() {
+                    let credentials = Credentials::new(&username.clone().unwrap(), &password.clone().unwrap());
+                    headers.insert(AUTHORIZATION, credentials.as_http_header().parse().unwrap());
+                }
+
+                let res = client.delete(&url)
+                    .headers(headers)
+                    .send()
+                    .await;
+
                 match res {
                     Ok(response) => {
                         let text = response.text().await.unwrap();
@@ -300,7 +353,7 @@ pub(crate) async fn unpublish_package(dir: &str) {
                 }
             }
         }
-        println!("{}", "successfully removed package from all registries".green());
+        println!("{}", "removed package".green());
     } else {
         println!("{}: {}", "unpublish error".red(), "pkg.stof file not found".italic().dimmed());
     }

@@ -733,6 +733,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "http-auth-basic"
+version = "0.3.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0e0c088bddfd73005b09807131224ad12c302655436b1270c8346a3ae8aaa37a"
+dependencies = [
+ "base64",
+]
+
+[[package]]
 name = "http-body"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1907,6 +1916,7 @@ dependencies = [
  "bytes",
  "clap",
  "colored 3.0.0",
+ "http-auth-basic",
  "reqwest",
  "stof",
  "stof-github",

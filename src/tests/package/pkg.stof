@@ -26,17 +26,7 @@ keywords: ["stof", "formata"]
 imports: ["point.stof", "box.stof"]
 exclude: ["excluded.stof$"]
 
-// Registries in which we are publishing this package to
-publish: [
-    {
-        registry: {
-            url: "http://localhost:3030"
-        }
-    }
-]
-
-// Registries in which we can add packages from
-add: {
+registries: {
     #[default]
     formata: {
         registry: {
