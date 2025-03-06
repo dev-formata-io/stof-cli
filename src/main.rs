@@ -184,11 +184,13 @@ enum Command {
         /// New user password.
         password: String,
 
-        /// Permissions (0b000 -> exec, modify, read).
+        /// Permissions (0b1001 -> exec, delete, write, read).
+        /// Default is 9, exec + read.
         #[arg(short, long)]
         perms: Option<i64>,
 
-        /// Scope for this user, restricting the modification paths.
+        /// Scope for this user, restricting the modification (write or delete) paths this user has access to.
+        /// For example, a scope of "example" would allow this user (if permitted) to write and delte only the registry paths that start with "@example/".
         #[arg(short, long)]
         scope: Option<String>,
     },
@@ -242,7 +244,7 @@ async fn main() {
             }
 
             // Run the document locally
-            let res = doc.run(None);
+            let res = doc.run(None, None);
             match res {
                 Ok(_) => {
                     // Nothing to do here...
@@ -314,7 +316,7 @@ async fn main() {
             }
         },
         Command::SetRemoteUser { server, admin_user, admin_pass, username, password, perms, scope } => {
-            let mut user_perms: i64 = 0b001; // read only access by default
+            let mut user_perms: i64 = 0b1001; // read and exec only access by default
             if let Some(prm) = perms {
                 user_perms = prm;
             }

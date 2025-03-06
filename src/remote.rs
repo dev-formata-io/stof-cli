@@ -19,7 +19,7 @@ use bytes::Bytes;
 use colored::Colorize;
 use http_auth_basic::Credentials;
 use reqwest::header::{HeaderMap, AUTHORIZATION, CONTENT_TYPE};
-use stof::{SData, SDoc, SFunc};
+use stof::SDoc;
 use crate::publish::create_temp_pkg_zip;
 
 
@@ -89,19 +89,13 @@ pub async fn remote_exec(address: &str, path: &str, username: Option<String>, pa
                                 }
                             }
 
-                            // The document comes back, call all #[local] functions on the main root of the document
-                            if let Some(main) = doc.graph.main_root() {
-                                let mut to_call = Vec::new();
-                                for dref in SFunc::func_refs(&doc.graph, &main) {
-                                    if let Some(func) = SData::get::<SFunc>(&doc.graph, &dref) {
-                                        if func.attributes.contains_key("local") {
-                                            to_call.push(dref);
-                                        }
-                                    }
-                                }
-                                for dref in to_call {
-                                    let _ = SFunc::call(&dref, "main", &mut doc, vec![], true);
-                                }
+                            // The document comes back, call all #[main] functions
+                            let res = doc.run(None, None);
+                            match res {
+                                Ok(_) => {
+                                    // Nothing to do here...
+                                },
+                                Err(res) => println!("{res}"),
                             }
                         },
                         Err(error) => {
@@ -159,19 +153,13 @@ pub async fn remote_exec_doc(address: &str, doc: &SDoc, username: Option<String>
                             }
                         }
 
-                        // The document comes back, call all #[local] functions on the main root of the document
-                        if let Some(main) = doc.graph.main_root() {
-                            let mut to_call = Vec::new();
-                            for dref in SFunc::func_refs(&doc.graph, &main) {
-                                if let Some(func) = SData::get::<SFunc>(&doc.graph, &dref) {
-                                    if func.attributes.contains_key("local") {
-                                        to_call.push(dref);
-                                    }
-                                }
-                            }
-                            for dref in to_call {
-                                let _ = SFunc::call(&dref, "main", &mut doc, vec![], true);
-                            }
+                        // The document comes back, call all #[main] functions
+                        let res = doc.run(None, None);
+                        match res {
+                            Ok(_) => {
+                                // Nothing to do here...
+                            },
+                            Err(res) => println!("{res}"),
                         }
                     },
                     Err(error) => {
@@ -186,9 +174,10 @@ pub async fn remote_exec_doc(address: &str, doc: &SDoc, username: Option<String>
     }
 }
 
+
 /// Set remote user.
 /// Need admin permissions on the server, along with the user information to create/set.
-/// Perms: 0b001 - read registry, 0b010 - modify registry, 0b100 - exec
+/// Perms: 0b1001 - (exec, delete, write, read) - 0-15, with 9 being the default, 1 is read only, 3 is read + write, 11 is read + write + exec, etc.
 /// Scope: optional, restricts modification of the registry to a specific top-level scope for a user. Ex. "formata" would allow modification to only @formata/... packages.
 pub async fn set_remote_user(address: &str, admin_user: &str, admin_pass: &str, user: &str, pass: &str, perms: i64, scope: &str) {
     let url = format!("{}/admin/users", address);
@@ -218,6 +207,7 @@ pub async fn set_remote_user(address: &str, admin_user: &str, admin_pass: &str, 
         }
     }
 }
+
 
 /// Remove remote user.
 /// Need admin permissions on the server, along with the username to delete.
