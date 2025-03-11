@@ -1,6 +1,6 @@
 [package]
 name = "stof-cli"
-version = "0.5.5"
+version = "0.5.6"
 edition = "2021"
 authors = ["CJ Cummings <cj@formata.io>"]
 description = "The official CLI for Stof. Stof is a unified data interface and interchange format for creating, sharing, and manipulating data."

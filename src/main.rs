@@ -51,6 +51,10 @@ enum Command {
         #[arg(short, long, value_name = "ADDRESS")]
         on: Option<String>,
 
+        /// Full remote command?
+        #[arg(short, long)]
+        full_remote: bool,
+
         /// When running on a remote server, should the file/package be parsed locally?
         #[arg(short = 'l', long)]
         parse_local: bool,
@@ -216,14 +220,14 @@ enum Command {
 async fn main() {
     let cli = Cli::parse();
     match cli.command {
-        Command::Run { path, on, allow, parse_local, username, password } => {
+        Command::Run { path, on, full_remote, allow, parse_local, username, password } => {
             // Execute the entire run command remotely if requested
             if !parse_local && on.is_some() {
                 if let Some(remote_address) = on {
                     if let Some(path) = path {
-                        remote_exec(&remote_address, &path, username, password).await;
+                        remote_exec(&remote_address, full_remote, &path, username, password).await;
                     } else {
-                        remote_exec(&remote_address, "", username, password).await;
+                        remote_exec(&remote_address, full_remote, "", username, password).await;
                     }
                     return;
                 }
@@ -239,7 +243,7 @@ async fn main() {
 
             // Execute this document remotely
             if let Some(remote_address) = on {
-                remote_exec_doc(&remote_address, &doc, username, password).await;
+                remote_exec_doc(&remote_address, full_remote, &doc, username, password).await;
                 return;
             }
 

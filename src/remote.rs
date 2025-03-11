@@ -24,7 +24,7 @@ use crate::publish::create_temp_pkg_zip;
 
 
 /// Execute a stof document or package remotely, parsing/creating it on the remote server.
-pub async fn remote_exec(address: &str, path: &str, username: Option<String>, password: Option<String>) {
+pub async fn remote_exec(address: &str, full: bool, path: &str, username: Option<String>, password: Option<String>) {
     let path_buf;
     if path.len() > 0 {
         path_buf = PathBuf::from(path);
@@ -35,7 +35,12 @@ pub async fn remote_exec(address: &str, path: &str, username: Option<String>, pa
         return;
     }
 
-    let url = format!("{}/run", address);
+    let url;
+    if full {
+        url = format!("{}", address);
+    } else {
+        url = format!("{}/run", address);
+    }
     let client = reqwest::Client::new();
     let mut headers = HeaderMap::new();
     if username.is_some() && password.is_some() {
@@ -115,9 +120,15 @@ pub async fn remote_exec(address: &str, path: &str, username: Option<String>, pa
 
 
 /// Execute a stof document remotely after it's already been parsed/created.
-pub async fn remote_exec_doc(address: &str, doc: &SDoc, username: Option<String>, password: Option<String>) {
+pub async fn remote_exec_doc(address: &str, full: bool, doc: &SDoc, username: Option<String>, password: Option<String>) {
     let bytes = doc.export_bytes("main", "bstof", None).unwrap();
-    let url = format!("{}/run", address);
+    
+    let url;
+    if full {
+        url = format!("{}", address);
+    } else {
+        url = format!("{}/run", address);
+    }
 
     let client = reqwest::Client::new();
     let mut headers = HeaderMap::new();
