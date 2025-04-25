@@ -14,20 +14,7 @@
 // limitations under the License.
 //
 
-import 'src/tests/import.stof';
-import github:formata 'task';
-
-
 #[main]
 fn main() {
-    self.imported();
-    pln('Hello, world!!!');
-    pln(self);
-}
-
-
-#[test]
-fn test() {
-    self.imported();
-    assert(true);
+    pln('Hello, TEST STOF');
 }

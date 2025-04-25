@@ -14,7 +14,9 @@
 // limitations under the License.
 //
 
-fn imported(): bool {
-    pln('imported');
-    return true;
+// Used in src/tests/imports/package.stof
+type Point {
+    x: float = 0;
+    y: float = 0;
+    z: float = 0;
 }
