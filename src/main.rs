@@ -23,12 +23,10 @@ use add::{add_package, remove_package};
 mod remote;
 use remote::{remote_exec, remote_exec_doc, remove_remote_user, set_remote_user};
 
-use std::{path::PathBuf, sync::Arc};
+use std::path::PathBuf;
 use clap::{Parser, Subcommand};
 use colored::Colorize;
 use stof::{lang::SError, SDoc};
-use stof_github::{GitHubFormat, GitHubLibrary};
-use stof_http::{server::serve, HTTPLibrary};
 
 
 #[derive(Parser, Debug)]
@@ -75,16 +73,6 @@ enum Command {
     /// Test a file or package, running all #[test] functions.
     Test {
         /// Path to file or package directory to test.
-        path: Option<String>,
-
-        /// Library allow list. Ex. "http" enables the HTTP library.
-        #[arg(short, long)]
-        allow: Vec<String>,
-    },
-
-    /// Serve a file or package using the HTTP library server.
-    Serve {
-        /// Path to file or package directory to serve.
         path: Option<String>,
 
         /// Library allow list. Ex. "http" enables the HTTP library.
@@ -270,16 +258,6 @@ async fn main() {
                 Err(res) => println!("{res}"),
             }
         },
-        Command::Serve { path, allow } => {
-            let doc;
-            if let Some(path) = path {
-                doc = create_doc(&path, &allow);
-            } else {
-                doc = create_doc("", &allow);
-            }
-
-            serve(doc); // start HTTP server with this document
-        },
         Command::Publish { dir, registry, username, password } => {
             let mut pkg_dir = "./".to_string();
             if let Some(dir) = dir {
@@ -380,34 +358,21 @@ fn create_doc(path: &str, allow: &Vec<String>) -> SDoc {
 /// Because this is the CLI, the File System is enabled by default.
 /// stof --allow all FILE_PATH
 fn allow_libs(doc: &mut SDoc, allow: &Vec<String>) {
+    let mut http_enabled = false;
     for name in allow {
         match name.as_str() {
             "all" => {
-                doc.load_lib(Arc::new(HTTPLibrary::default()));
-
-                // Enables users to access their own GitHub repositories to add interfaces and data
-                doc.load_lib(Arc::new(GitHubLibrary::default()));
-
-                // Add default access to Formata's interfaces - this will change when we have a package manager...
-                let mut formata = GitHubFormat::new("stof-formata", "dev-formata-io");
-                formata.repo_id = "formata".into();
-                doc.load_format(Arc::new(formata));
+                http_enabled = true;
             },
             "http" => {
-                doc.load_lib(Arc::new(HTTPLibrary::default()));
-            },
-            "github" => {
-                // Enables users to access their own GitHub repositories to add interfaces and data
-                doc.load_lib(Arc::new(GitHubLibrary::default()));
-
-                // Add default access to Formata's interfaces - this will change when we have a package manager...
-                let mut formata = GitHubFormat::new("stof-formata", "dev-formata-io");
-                formata.repo_id = "formata".into();
-                doc.load_format(Arc::new(formata));
+                http_enabled = true;
             },
             _ => {
                 println!("{}: {}", "unrecognized library".italic().dimmed(), name.purple());
             }
         }
+    }
+    if !http_enabled {
+        doc.remove_library("HTTP");
     }
 }
