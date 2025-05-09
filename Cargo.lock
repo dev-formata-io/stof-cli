@@ -352,13 +352,15 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "chrono"
-version = "0.4.40"
+version = "0.4.41"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1a7964611d71df112cb1730f2ee67324fcf4d0fc6606acbbe9bfe06df124637c"
+checksum = "c469d952047f47f91b68d1cba3f10d63c11d73e4636f24f08daf0278abf01c4d"
 dependencies = [
  "android-tzdata",
  "iana-time-zone",
+ "js-sys",
  "num-traits",
+ "wasm-bindgen",
  "windows-link",
 ]
 
@@ -2437,14 +2439,15 @@ checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 
 [[package]]
 name = "stof"
-version = "0.3.36"
+version = "0.3.38"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "75a9bfe50a5c1211f235a9f9f2108a3651028c55c23f212a6f9093476e2c7444"
+checksum = "884d9d59d81544f472e85f62466d31d22cd65bd387750f0e0c5192ea0c215a3d"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
  "bincode",
  "bytes",
+ "chrono",
  "colored 2.2.0",
  "docx-rs",
  "getrandom 0.2.15",
@@ -2471,7 +2474,7 @@ dependencies = [
 
 [[package]]
 name = "stof-cli"
-version = "0.6.2"
+version = "0.6.3"
 dependencies = [
  "anyhow",
  "bytes",
