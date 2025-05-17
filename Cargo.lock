@@ -2450,9 +2450,9 @@ checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 
 [[package]]
 name = "stof"
-version = "0.4.6"
+version = "0.4.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "368c9c8a7530e4b78d49d18e6250ec63fd6847886d65aa18e1df0d30f2797e5f"
+checksum = "b0850e08f6f9f47912d7b18cd60575b6a0420495198b70bd0fb420f2e16bab92"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -2485,7 +2485,7 @@ dependencies = [
 
 [[package]]
 name = "stof-cli"
-version = "0.6.10"
+version = "0.6.11"
 dependencies = [
  "anyhow",
  "bytes",
