@@ -222,7 +222,7 @@ async fn main() {
             }
 
             // Create the document that will be ran
-            let mut doc;
+            let doc;
             if let Some(path) = path {
                 doc = create_doc(&path, &allow);
             } else {
@@ -236,7 +236,7 @@ async fn main() {
             }
 
             // Run the document locally
-            let res = doc.run(None, None);
+            let res = SDoc::run_blocking_async(doc, None, None).await;
             match res {
                 Ok(_) => {
                     // Nothing to do here...
@@ -245,14 +245,14 @@ async fn main() {
             }
         },
         Command::Test { path, allow } => {
-            let mut doc;
+            let doc;
             if let Some(path) = path {
                 doc = create_doc(&path, &allow);
             } else {
                 doc = create_doc("", &allow);
             }
 
-            let res = doc.run_tests(false, None);
+            let res = SDoc::test_blocking_async(doc, false, None).await;
             match res {
                 Ok(res) => println!("{res}"),
                 Err(res) => println!("{res}"),
