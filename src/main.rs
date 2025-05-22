@@ -373,6 +373,6 @@ fn allow_libs(doc: &mut SDoc, allow: &Vec<String>) {
         }
     }
     if !http_enabled {
-        doc.remove_library("HTTP");
+        doc.remove_library("Http");
     }
 }
