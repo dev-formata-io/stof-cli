@@ -1,6 +1,6 @@
 [package]
 name = "stof-cli"
-version = "0.8.5"
+version = "0.9.0"
 edition = "2021"
 authors = ["CJ Cummings <cj@formata.io>"]
 description = "The official CLI for standalone Stof. Stof is a simple and embeddable data runtime."
@@ -21,5 +21,5 @@ clap = { version = "4.5.23", features = ["derive"] }
 colored = "3.0.0"
 http-auth-basic = "0.3.5"
 reqwest = "0.12.12"
-stof = { version = "0.6.4", features = ["async", "thread", "image", "docx", "pdf", "http", "markdown-lib"] }
+stof = { version = "0.7.0", features = ["async", "thread", "image", "docx", "pdf", "http", "markdown-lib"] }
 tokio = { version = "1.45.0", features = ["full"] }
