@@ -277,10 +277,24 @@ async fn main() {
             let allow = vec!["docs".to_string()];
             if let Some(path) = path {
                 doc = create_doc(&path, &allow);
-                out_path = path;
+
+                let mut path = path.split('.').collect::<Vec<&str>>();
+                if path.len() > 1 {
+                    path.pop();
+                }
+
+                if html {
+                    out_path = format!("{}.html", path.join("."))
+                } else {
+                    out_path = format!("{}.md", path.join("."))
+                }
             } else {
                 doc = create_doc("", &allow);
-                out_path = "docs.md".to_string();
+                if html {
+                    out_path = "docs.html".to_string();
+                } else {
+                    out_path = "docs.md".to_string();
+                }
             }
 
             if let Some(out) = out {
