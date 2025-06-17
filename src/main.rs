@@ -23,10 +23,10 @@ use add::{add_package, remove_package};
 mod remote;
 use remote::{remote_exec, remote_exec_doc, remove_remote_user, set_remote_user};
 
-use std::path::PathBuf;
+use std::{fs, path::PathBuf, sync::Arc};
 use clap::{Parser, Subcommand};
 use colored::Colorize;
-use stof::{lang::SError, SDoc};
+use stof::{gitbook::Gitbook, lang::SError, SDoc};
 
 
 #[derive(Parser, Debug)]
@@ -78,6 +78,19 @@ enum Command {
         /// Library allow list. Ex. "http" enables the HTTP library.
         #[arg(short, long)]
         allow: Vec<String>,
+    },
+
+    /// Create documentation for a file or package.
+    Docs {
+        /// Path to file or package directory to test.
+        path: Option<String>,
+
+        /// Optional output path.
+        out: Option<String>,
+
+        /// HTML option.
+        #[arg(long)]
+        html: bool,
     },
 
     /// Remove a package from this workspace.
@@ -258,6 +271,47 @@ async fn main() {
                 Err(res) => println!("{res}"),
             }
         },
+        Command::Docs { path, out, html } => {
+            let doc;
+            let mut out_path;
+            let allow = vec!["docs".to_string()];
+            if let Some(path) = path {
+                doc = create_doc(&path, &allow);
+                out_path = path;
+            } else {
+                doc = create_doc("", &allow);
+                out_path = "docs.md".to_string();
+            }
+
+            if let Some(out) = out {
+                out_path = out;
+            }
+
+            let md = doc.export_string("main", "gitbook", None);
+            match md {
+                Ok(mut out) => {
+                    if html {
+                        out = markdown::to_html(&out);
+                    }
+
+                    let mut path = out_path.split('/').collect::<Vec<&str>>();
+                    path.pop();
+                    if path.len() > 0 {
+                        let dirpath = path.join("/");
+                        let _ = fs::create_dir_all(&dirpath);
+                    }
+
+                    if let Err(err) = fs::write(out_path, out) {
+                        println!("{err:?}");
+                    } else {
+                        println!("{}", "ok".green());
+                    }
+                },
+                Err(err) => {
+                    println!("{}", err.to_string(&doc.graph));
+                }
+            }
+        },
         Command::Publish { dir, registry, username, password } => {
             let mut pkg_dir = "./".to_string();
             if let Some(dir) = dir {
@@ -366,6 +420,10 @@ fn allow_libs(doc: &mut SDoc, allow: &Vec<String>) {
             },
             "http" => {
                 http_enabled = true;
+            },
+            "docs" => {
+                doc.load_stof_docs();
+                doc.load_format(Arc::new(Gitbook{}));
             },
             _ => {
                 println!("{}: {}", "unrecognized library".italic().dimmed(), name.purple());
