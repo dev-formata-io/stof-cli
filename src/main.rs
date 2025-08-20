@@ -73,16 +73,19 @@ enum Command {
 fn main() {
     let cli = Cli::parse();
     match cli.command {
-        Command::Run { path , attribute } => {
+        Command::Run { path , mut attribute } => {
             let mut graph;
             if let Some(path) = path {
                 graph = create_graph(&path);
             } else {
                 graph = create_graph("");
             }
+
+            if attribute.len() < 1 { attribute.push("main".into()); } // main funtions by default
             let attributes = attribute
                 .into_iter()
                 .collect();
+            
             match Runtime::run_attribute_functions(&mut graph, None, &Some(attributes), true) {
                 Ok(res) => println!("{res}"),
                 Err(res) => println!("{res}"),
