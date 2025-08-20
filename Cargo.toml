@@ -1,6 +1,6 @@
 [package]
 name = "stof-cli"
-version = "0.11.0"
+version = "0.11.1"
 edition = "2021"
 authors = ["CJ Cummings <cj@formata.io>"]
 description = "The official CLI for standalone Stof. Stof is a simple and embeddable data runtime."
@@ -17,4 +17,4 @@ path = "src/main.rs"
 [dependencies]
 clap = { version = "4.5.23", features = ["derive"] }
 colored = "3.0.0"
-stof = { version = "0.8.0", features = ["full"] }
+stof = { version = "0.8.11", features = ["full"] }

@@ -17,7 +17,7 @@
 use std::{collections::HashSet, path::PathBuf};
 use clap::{Parser, Subcommand};
 use colored::Colorize;
-use stof::{model::{Graph, StofPackageFormat}, runtime::Error};
+use stof::{model::{Graph, StofPackageFormat}, runtime::{Error, Runtime}};
 
 
 #[derive(Parser, Debug)]
@@ -34,12 +34,19 @@ enum Command {
     Run {
         /// Path to a file or package to import.
         path: Option<String>,
+
+        /// Optional function attributes to run instead of #[main].
+        #[arg(short, long)]
+        attribute: Vec<String>,
     },
 
     /// Test a file or package, running all #[test] functions.
     Test {
         /// Path to a file or package to import.
         path: Option<String>,
+
+        /// Context to test.
+        context: Option<String>,
     },
 
     /// Create documentation for a file or package using the "docs" format.
@@ -66,26 +73,29 @@ enum Command {
 fn main() {
     let cli = Cli::parse();
     match cli.command {
-        Command::Run { path } => {
+        Command::Run { path , attribute } => {
             let mut graph;
             if let Some(path) = path {
                 graph = create_graph(&path);
             } else {
                 graph = create_graph("");
             }
-            match graph.run(None, true) {
+            let attributes = attribute
+                .into_iter()
+                .collect();
+            match Runtime::run_attribute_functions(&mut graph, None, &Some(attributes), true) {
                 Ok(res) => println!("{res}"),
                 Err(res) => println!("{res}"),
             }
         },
-        Command::Test { path } => {
+        Command::Test { path, context } => {
             let mut graph;
             if let Some(path) = path {
                 graph = create_graph(&path);
             } else {
                 graph = create_graph("");
             }
-            match graph.test(None, true) {
+            match graph.test(context, true) {
                 Ok(res) => println!("{res}"),
                 Err(res) => println!("{res}"),
             }
