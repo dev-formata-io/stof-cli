@@ -40,6 +40,7 @@ impl CologStyle for StofCliLogger {
 #[command(version, about, long_about = None)]
 struct Cli {
     #[arg(short, long, action = clap::ArgAction::Count)]
+    /// Turn debug logging on ("log_error" & "log_warn" always on) ("-d" for "log_info" logs, "-dd" for "log_trace" & "log_debug" also)
     debug: u8,
 
     #[command(subcommand)]
