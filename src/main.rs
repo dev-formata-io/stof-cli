@@ -16,8 +16,24 @@
 
 use std::{collections::HashSet, path::PathBuf};
 use clap::{Parser, Subcommand};
+use colog::format::CologStyle;
 use colored::Colorize;
+use log::Level;
 use stof::{model::{Graph, StofPackageFormat}, runtime::{Error, Runtime}};
+
+
+pub struct StofCliLogger;
+impl CologStyle for StofCliLogger {
+    fn level_token(&self, level: &log::Level) -> &str {
+        match *level {
+            Level::Error => "ERROR",
+            Level::Warn => "WARN",
+            Level::Info => "INFO",
+            Level::Debug => "DEBUG",
+            Level::Trace => "TRACE",
+        }
+    }
+}
 
 
 #[derive(Parser, Debug)]
@@ -71,6 +87,11 @@ enum Command {
 
 /// Main.
 fn main() {
+    let mut builder = env_logger::builder();
+    builder.format(colog::formatter(StofCliLogger));
+    builder.filter(None, log::LevelFilter::Trace);
+    builder.init();
+
     let cli = Cli::parse();
     match cli.command {
         Command::Run { path , mut attribute } => {
