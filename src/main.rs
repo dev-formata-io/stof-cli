@@ -39,6 +39,9 @@ impl CologStyle for StofCliLogger {
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Cli {
+    #[arg(short, long, action = clap::ArgAction::Count)]
+    debug: u8,
+
     #[command(subcommand)]
     command: Command,
 }
@@ -87,12 +90,16 @@ enum Command {
 
 /// Main.
 fn main() {
+    let cli = Cli::parse();
     let mut builder = env_logger::builder();
     builder.format(colog::formatter(StofCliLogger));
-    builder.filter(None, log::LevelFilter::Trace);
+    match cli.debug {
+        0 => builder.filter(None, log::LevelFilter::Warn),
+        1 => builder.filter(None, log::LevelFilter::Info),
+        _ => builder.filter(None, log::LevelFilter::Trace),
+    };
     builder.init();
 
-    let cli = Cli::parse();
     match cli.command {
         Command::Run { path , mut attribute } => {
             let mut graph;
@@ -160,7 +167,7 @@ fn main() {
             if let Some(path) = StofPackageFormat::create_package_file(&dir, &out_path, &included, &excluded) {
                 println!("{} {}", "created".green(), path.blue());
             } else {
-                println!("{}", "pkg creation error".red());
+                log::error!("{}", "pkg creation error".red());
             }
         },
     }
@@ -198,7 +205,7 @@ fn create_graph(path: &str) -> Graph {
             graph
         },
         Err(error) => {
-            eprintln!("{}", error.to_string());
+            log::error!("{}", error.to_string());
             Graph::default()
         }
     }

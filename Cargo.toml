@@ -1,6 +1,6 @@
 [package]
 name = "stof-cli"
-version = "0.11.4"
+version = "0.11.5"
 edition = "2024"
 authors = ["CJ Cummings <cj@formata.io>"]
 description = "The official CLI for standalone Stof. Stof is a smart, declarative runtime for data workflows."
