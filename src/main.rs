@@ -14,12 +14,12 @@
 // limitations under the License.
 //
 
-use std::{collections::HashSet, path::PathBuf};
+use std::{collections::HashSet, fs, ops::Deref, path::PathBuf};
 use clap::{Parser, Subcommand};
 use colog::format::CologStyle;
 use colored::Colorize;
 use log::Level;
-use stof::{model::{Graph, StofPackageFormat}, runtime::{Error, Runtime}};
+use stof::{model::{Field, Graph, StofPackageFormat}, runtime::{Error, Runtime, Val}};
 
 
 pub struct StofCliLogger;
@@ -87,6 +87,15 @@ enum Command {
         /// Default is <PATH>/out.pkg.
         out: Option<String>,
     },
+
+    /// Unpackage a Stof package (.pkg) file into a directory of choice.
+    Unpkg {
+        /// Path to a Stof package (.pkg) file.
+        path: String,
+
+        /// Optional output directory (defualts to "stof/<PATH NAME>").
+        out: Option<String>,
+    },
 }
 
 /// Main.
@@ -105,7 +114,11 @@ fn main() {
         Command::Run { path , mut attribute } => {
             let mut graph;
             if let Some(path) = path {
-                graph = create_graph(&path);
+                if path == "." {
+                    graph = create_graph("");
+                } else {
+                    graph = create_graph(&path);
+                }
             } else {
                 graph = create_graph("");
             }
@@ -123,7 +136,11 @@ fn main() {
         Command::Test { path, context } => {
             let mut graph;
             if let Some(path) = path {
-                graph = create_graph(&path);
+                if path == "." {
+                    graph = create_graph("");
+                } else {
+                    graph = create_graph(&path);
+                }
             } else {
                 graph = create_graph("");
             }
@@ -154,7 +171,7 @@ fn main() {
             }
         },
         Command::Pkg { path, out } => {
-            let mut dir = "".to_string();
+            let mut dir = ".".to_string();
             if let Some(path) = path {
                 dir = path;
             }
@@ -163,13 +180,99 @@ fn main() {
             if let Some(out) = out {
                 out_path = out;
             }
-            let included = HashSet::new();
-            let excluded = HashSet::new();
+            let mut included = HashSet::new();
+            let mut excluded = HashSet::new();
+
+            let pkg_path = format!("{dir}/pkg.stof");
+            if let Ok(exists) = fs::exists(&pkg_path) {
+                if exists {
+                    let mut graph = Graph::default();
+                    let _ = graph.file_import("stof", &pkg_path, None);
+                    let root = graph.ensure_main_root();
+
+                    // Include files
+                    if let Some(field) = Field::direct_field(&graph, &root, "include") {
+                        if let Some(field) = graph.get_stof_data::<Field>(&field) {
+                            match field.value.val.read().deref() {
+                                Val::List(patterns) => {
+                                    for pattern in patterns {
+                                        match pattern.read().deref() {
+                                            Val::Str(regex) => {
+                                                included.insert(regex.to_string());
+                                            },
+                                            _ => {}
+                                        }
+                                    }
+                                },
+                                Val::Set(patterns) => {
+                                    for pattern in patterns {
+                                        match pattern.read().deref() {
+                                            Val::Str(regex) => {
+                                                included.insert(regex.to_string());
+                                            },
+                                            _ => {}
+                                        }
+                                    }
+                                },
+                                _ => {}
+                            }
+                        }
+                    }
+
+                    // Exclude files
+                    if let Some(field) = Field::direct_field(&graph, &root, "exclude") {
+                        if let Some(field) = graph.get_stof_data::<Field>(&field) {
+                            match field.value.val.read().deref() {
+                                Val::List(patterns) => {
+                                    for pattern in patterns {
+                                        match pattern.read().deref() {
+                                            Val::Str(regex) => {
+                                                excluded.insert(regex.to_string());
+                                            },
+                                            _ => {}
+                                        }
+                                    }
+                                },
+                                Val::Set(patterns) => {
+                                    for pattern in patterns {
+                                        match pattern.read().deref() {
+                                            Val::Str(regex) => {
+                                                excluded.insert(regex.to_string());
+                                            },
+                                            _ => {}
+                                        }
+                                    }
+                                },
+                                _ => {}
+                            }
+                        }
+                    }
+                }
+            }
+
             if let Some(path) = StofPackageFormat::create_package_file(&dir, &out_path, &included, &excluded) {
                 println!("{} {}", "created".green(), path.blue());
             } else {
                 log::error!("{}", "pkg creation error".red());
             }
+        },
+        Command::Unpkg { mut path, out } => {
+            if !path.contains('.') {
+                path = format!("{path}.pkg");
+            }
+            let dir;
+            if let Some(out) = out {
+                dir = out;
+            } else {
+                let buf = PathBuf::from(&path);
+                let mut stem = buf.file_stem().unwrap_or_default().to_str().unwrap_or_default().to_string();
+                stem = stem.replace('.', "_");
+                dir = format!("./stof/{stem}");
+            }
+            let _ = fs::create_dir_all(&dir);
+
+            StofPackageFormat::unzip_file(&path, &dir);
+            println!("{} {}", "unpacked".green(), path.blue());
         },
     }
 }
