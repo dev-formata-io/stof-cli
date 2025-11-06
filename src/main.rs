@@ -290,6 +290,7 @@ fn create_graph(path: &str) -> Graph {
     }
     
     let mut graph = Graph::default();
+    graph.set_deadpools_enabled(false); // no need for deadpools with CLI
 
     let res;
     if path_buf.is_dir() {
