@@ -60,6 +60,7 @@ dependencies = [
  "scrypt",
  "sha2",
  "subtle",
+ "web-sys",
  "x25519-dalek",
  "zeroize",
 ]
@@ -2997,9 +2998,9 @@ checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 
 [[package]]
 name = "stof"
-version = "0.8.50"
+version = "0.8.61"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8f02889f8fd2e96d21db843d10eb06d04b1ad2b401fdc22054346f5149964dcc"
+checksum = "acd31a0a20a9676d8b4734fddde689068b8a2e7408260e38f20d2b5af5f0fa53"
 dependencies = [
  "age",
  "anyhow",
@@ -3030,12 +3031,13 @@ dependencies = [
  "typetag",
  "urlencoding",
  "walkdir",
+ "web-time",
  "zip 4.6.1",
 ]
 
 [[package]]
 name = "stof-cli"
-version = "0.11.7"
+version = "0.11.8"
 dependencies = [
  "clap",
  "colog",
@@ -3787,6 +3789,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "33b6dd2ef9186f1f2072e409e99cd22a975331a6b3591b12c764e0e55c60d5d2"
 dependencies = [
  "js-sys",
+ "wasm-bindgen",
+]
+
+[[package]]
+name = "web-time"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5a6580f308b1fad9207618087a65c04e7a10bc77e02c8e84e9b00dd4b12fa0bb"
+dependencies = [
+ "js-sys",
+ "serde",
  "wasm-bindgen",
 ]
 
