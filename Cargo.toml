@@ -1,9 +1,9 @@
 [package]
 name = "stof-cli"
-version = "0.11.8"
+version = "0.11.9"
 edition = "2024"
 authors = ["CJ Cummings <cj@formata.io>"]
-description = "The official CLI for standalone Stof. Stof is a declarative runtime & data format for modern workflows."
+description = "CLI for Stof - data that carries its own logic"
 license = "Apache-2.0"
 repository = "https://github.com/dev-formata-io/stof-cli"
 homepage = "https://docs.stof.dev"
@@ -20,4 +20,4 @@ colored = "3.0.0"
 colog = "1.3.0"
 env_logger = "0.11.8"
 log = "0.4.28"
-stof = { version = "0.8.61", features = ["full"] }
+stof = { version = "0.9.0-rc.2", features = ["full"] }

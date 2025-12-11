@@ -19,7 +19,7 @@ use clap::{Parser, Subcommand};
 use colog::format::CologStyle;
 use colored::Colorize;
 use log::Level;
-use stof::{model::{Field, Graph, StofPackageFormat}, runtime::{Error, Runtime, Val}};
+use stof::{model::{Field, Graph, Profile, StofPackageFormat, prof::insert_profile_lib}, runtime::{Error, Runtime, Val}};
 
 
 pub struct StofCliLogger;
@@ -71,6 +71,10 @@ enum Command {
 
     /// Create documentation for a file or package using the "docs" format.
     Docs {
+        #[arg(long)]
+        /// Include tests in docs?
+        tests: bool,
+
         /// Path to a directory or file to import.
         path: Option<String>,
 
@@ -115,12 +119,12 @@ fn main() {
             let mut graph;
             if let Some(path) = path {
                 if path == "." {
-                    graph = create_graph("");
+                    graph = create_graph("", GraphProfile::Prod);
                 } else {
-                    graph = create_graph(&path);
+                    graph = create_graph(&path, GraphProfile::Prod);
                 }
             } else {
-                graph = create_graph("");
+                graph = create_graph("", GraphProfile::Prod);
             }
 
             if attribute.len() < 1 { attribute.push("main".into()); } // main funtions by default
@@ -137,19 +141,19 @@ fn main() {
             let mut graph;
             if let Some(path) = path {
                 if path == "." {
-                    graph = create_graph("");
+                    graph = create_graph("", GraphProfile::Test);
                 } else {
-                    graph = create_graph(&path);
+                    graph = create_graph(&path, GraphProfile::Test);
                 }
             } else {
-                graph = create_graph("");
+                graph = create_graph("", GraphProfile::Test);
             }
             match graph.test(context, true) {
                 Ok(res) => println!("{res}"),
                 Err(res) => println!("{res}"),
             }
         },
-        Command::Docs { path, out } => {
+        Command::Docs { tests, path, out } => {
             let mut out_path = String::from("./");
             if let Some(out) = out {
                 out_path = out;
@@ -160,7 +164,9 @@ fn main() {
                 in_path = path;
             }
 
-            let graph = create_graph(&in_path);
+            let mut prof = GraphProfile::Docs;
+            if tests { prof = GraphProfile::TestDocs; }
+            let graph = create_graph(&in_path, prof);
             match graph.docs(&out_path, None) {
                 Ok(_) => {
                     println!("{} {}", "created docs".green(), out_path.blue());
@@ -187,7 +193,7 @@ fn main() {
             if let Ok(exists) = fs::exists(&pkg_path) {
                 if exists {
                     let mut graph = Graph::default();
-                    let _ = graph.file_import("stof", &pkg_path, None);
+                    let _ = graph.file_import("stof", &pkg_path, None, &Profile::default());
                     let root = graph.ensure_main_root();
 
                     // Include files
@@ -278,8 +284,16 @@ fn main() {
 }
 
 
+enum GraphProfile {
+    Test,
+    TestDocs,
+    Prod,
+    Docs,
+}
+
+
 /// Create a stof graph from a file path.
-fn create_graph(path: &str) -> Graph {
+fn create_graph(path: &str, prof: GraphProfile) -> Graph {
     let path_buf;
     if path.len() > 0 {
         path_buf = PathBuf::from(path);
@@ -292,12 +306,20 @@ fn create_graph(path: &str) -> Graph {
     let mut graph = Graph::default();
     graph.set_deadpools_enabled(false); // no need for deadpools with CLI
 
+    let profile = match prof {
+        GraphProfile::Prod => Profile::prod(),
+        GraphProfile::Docs => Profile::docs(false),
+        GraphProfile::Test => Profile::test(),
+        GraphProfile::TestDocs => Profile::docs(true),
+    };
+    insert_profile_lib(&mut graph, &profile); // should be redundant, but just in case
+
     let res;
     if path_buf.is_dir() {
-        res = graph.file_import("pkg", path_buf.to_str().unwrap(), None);
+        res = graph.file_import("pkg", path_buf.to_str().unwrap(), None, &profile);
     } else if let Some(format) = path_buf.extension() {
         if let Some(format) = format.to_str() {
-            res = graph.file_import(format, path_buf.to_str().unwrap(), None);
+            res = graph.file_import(format, path_buf.to_str().unwrap(), None, &profile);
         } else {
             res = Err(Error::Custom("could not retrieve import format".into()));
         }
