@@ -36,8 +36,17 @@ impl CologStyle for StofCliLogger {
 }
 
 
+const BANNER: &str = r#"
+   _____ __________  ______
+  / ___//_  __/ __ \/ ____/
+  \__ \  / / / / / / /_    
+ ___/ / / / / /_/ / __/    
+/____/ /_/  \____/_/
+"#;
+
+
 #[derive(Parser, Debug)]
-#[command(version, about, long_about = None)]
+#[command(author, version, about = "Portable code and data together", long_about = None, before_help = BANNER)]
 struct Cli {
     #[arg(short, long, action = clap::ArgAction::Count)]
     /// Turn debug logging on ("log_error" & "log_warn" always on) ("-d" for "log_info" logs, "-dd" for "log_trace" & "log_debug" also)
