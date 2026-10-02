@@ -1,225 +1,143 @@
-<h1 align="center" style="font-size: 40px; font-weight: 600; font-family: ui-monospace, 'Cascadia Mono', 'Segoe UI Mono', 'Liberation Mono', Menlo, Monaco, Consolas, 'Courier New', monospace;">Stof CLI: Data that carries its own logic</h1>
+<h1 align="center">
+    <a href="https://stof.dev">
+        <picture>
+            <source height="110" media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/dev-formata-io/stof/main/content/stof.png">
+            <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/dev-formata-io/stof/main/content/image_dark.png">
+            <img height="110" alt="Stof" src="https://raw.githubusercontent.com/dev-formata-io/stof/main/content/image_dark.png">
+        </picture>
+    </a>
+    <br>
+    <a href="https://crates.io/crates/stof-cli"><img src="https://img.shields.io/crates/v/stof-cli?label=stof-cli&color=aqua"></a>
+    <a href="https://github.com/dev-formata-io/stof"><img src="https://img.shields.io/github/stars/dev-formata-io/stof"></a>
+    <a href="https://stof.dev"><img src="https://img.shields.io/badge/docs-stof.dev-purple"></a>
+    <a href="https://crates.io/crates/stof-cli"><img src="https://img.shields.io/crates/l/stof-cli?color=maroon"></a>
+</h1>
 
-<p align="center">
-    <a href="https://docs.stof.dev" style="margin: 3px"><img src="https://img.shields.io/badge/docs-docs.stof.dev-purple?logo=gitbook&logoColor=white"></a>
-    <a href="https://github.com/dev-formata-io/stof" style="margin: 3px"><img src="https://img.shields.io/github/stars/dev-formata-io/stof"></a>
-    <a href="https://github.com/dev-formata-io/stof/actions" style="margin: 3px"><img src="https://img.shields.io/github/actions/workflow/status/dev-formata-io/stof/rust.yml"></a>
-    <a href="https://crates.io/crates/stof" style="margin: 3px"><img src="https://img.shields.io/crates/d/stof?label=crate%20downloads&color=aqua"></a>
-    <a href="https://crates.io/crates/stof" style="margin: 3px"><img src="https://img.shields.io/crates/l/stof?color=maroon"></a>
-</p>
+<h3 align="center">The Stof command line: run, test, document, and package Stof files.</h3>
 
-### Standard Transformation and Organization Format
+[Stof](https://github.com/dev-formata-io/stof) is JSON that can carry its own functions: portable, sandboxed logic inside data that runs the same in Rust, JavaScript, and Python. This CLI is how you work with Stof files directly: run them while you build, test them in CI, generate docs, and bundle them into packages.
 
-- [Docs](https://docs.stof.dev)
-- [Playground](https://play.stof.dev)
-- [GitHub](https://github.com/dev-formata-io/stof)
-- [Discord](https://discord.gg/Up5kxdeXZt)
-- [Install](https://docs.stof.dev/book/installation)
+## Install
 
-<br/>
+```bash
+cargo install stof-cli
+```
 
-![Alt](https://repobeats.axiom.co/api/embed/efbc3324d289ccfb6d7825c840491d10ea1d5260.svg "Repobeats analytics image")
+This installs the `stof` command. It needs a [Rust toolchain](https://rustup.rs). To try Stof without installing anything, use the [Playground](https://stof.dev/playground).
 
-## Overview
-Send functions + data over APIs, write configs that validate themselves, build data pipelines where transformations travel with the data, store logic + data in a database, etc.
+## Quick start
 
-> Works with JSON, YAML, TOML, etc. - no migration needed.
+`hello.stof`:
 
-> Add/import logic only where required.
-
-Treats everything uniformly - fields, functions, PDFs, images, binaries, etc. - as data that can be combined in a single portable document.
-
-### Benefits
-- Write data + logic once, use it everywhere (JS, Rust, Python, anywhere your app lives)
-- Format-agnostic I/O (works with JSON, YAML, TOML, PDF, binaries, etc.)
-- Sandboxed logic + execution in your data (as data)
-- Send functions over APIs
-- Doesn't need a large ecosystem to work
-
-### Example Use-Cases
-- Smart configs with validation and logic
-- Data interchange with sandboxed execution
-- Prompts as human-readable & maintainable data + code
-- AI/LLM workflows and model configs
-- Data pipelines with built-in processing
-- Integration glue between systems
-- Self-describing datasets
-- ... basically anywhere data meets logic
-
-### Sample Stof
-Check out the online [playground](https://play.stof.dev) for examples you can play with yourself.
-```rust
-#[attributes("optional exec control | metadata | meta-logic")]
-// A field on the doc "root" node.
-field: 42
-
-// JSON-like data & function organization
-stats: {
-    // Optional field types & expressions
-    prompt context: prompt("trees of strings", tag="optional-xml-tag",
-        prompt("behaves like a tree for workflows & functions"),
-        prompt("just cast to/from str anywhere strings are needed")
-        // Std.prompt(..) can take N prompts as sub-prompts
-    );
-    
-    // Units as types with conversions & casting
-    cm height: 6ft + 2in
-    MiB memory: 2MB + 50GiB - 5GB + 1TB
-    ms ttl: 300s
-}
+```stof
+name: 'world'
 
 #[main]
-/// The CLI (and other envs) use the #[main] attribute for which fns to call on run.
-fn do_something() {
-    // Dot separated path navigation of the document (self is the current node/obj)
-    let gone = self.self_destruction();
-    assert(gone);
-
-    // async functions, blocks, and expressions always available
-    async {
-        const now = Time.now();
-        loop {
-            sleep(20ms);
-            if (Time.diff(now) > 2s) break;
-        }
-    }
-
-    // partial I/O with any format
-    pln(stringify("toml", self.stats));
+fn main() {
+    pln(`Hello, ${self.name}!`);
 }
 
-/**
- * A function that removes itself from this document when executed.
- */
-fn self_destruction() -> bool {
-    pln(self.field); // Std.pln(..) print line function
-    drop(this);      // "this" is always the last fn on the call stack
-    true             // "return" keyword is optional (no ";")
+#[test]
+fn has_a_name() {
+    assert_eq(self.name, 'world');
 }
 ```
 
-## CLI
-See [installation docs](https://docs.stof.dev/book/installation) for CLI instructions and more information.
-
-```rust
-#[main]
-fn say_hi() {
-    pln("Hello, world!");
-}
-```
-```
-> stof run example.stof
+```text
+$ stof run hello.stof
 Hello, world!
+
+$ stof test hello.stof
+running 1 tests ...
+test root has_a_name ... ok
+
+test result: ok. 1 passed; 0 failed; finished in 0s
 ```
 
-## Embedded Stof
-Stof is written in Rust, and is meant to be used wherever you work. Join the project [Discord](https://discord.gg/Up5kxdeXZt) to get involved.
+## Commands
 
-### Rust
-``` toml
-[dependencies]
-stof = "0.8.*"
-```
-```rust
-use stof::model::Graph;
+| Command | What it does |
+|---|---|
+| `stof run [path]` | Runs every `#[main]` function. `-a <attr>` runs functions with another attribute instead (repeatable). |
+| `stof test [path] [filter]` | Runs every `#[test]` function. The optional filter runs only tests on objects whose path contains it (Ex. `Libs.Http`). |
+| `stof docs [path] [out]` | Writes Markdown docs for the document (and the standard library) into `out` (default `./`). `--tests` includes test functions. |
+| `stof pkg [dir] [out]` | Bundles a directory with a `pkg.stof` file into a `.pkg` file (default `<dir>/out.pkg`). |
+| `stof unpkg <file> [out]` | Unpacks a `.pkg` file into a directory (default `./stof/<name>`). |
 
-fn main() {
-    let mut graph = Graph::default();
-    
-    graph.parse_stof_src(r#"
-        #[main]
-        fn main() {
-            pln("Hello, world!");
-        }
-    "#, None).unwrap();
+`path` can be a `.stof` file, any supported data file (JSON, YAML, TOML, ...), a package directory, or a `.pkg` file. It defaults to the current directory.
 
-    match graph.run(None, true) {
-        Ok(res) => println!("{res}"),
-        Err(err) => panic!("{err}"),
-    }
-}
+Global flags: `-d` shows `log_info` output, `-dd` also shows debug and trace logs. `stof <command> --help` lists every option.
+
+### Running other attributes
+
+Attributes are just labels, so one file can hold several entry points:
+
+```stof
+#[nightly]
+fn cleanup() { pln('cleaning up'); }
+
+#[weekly]
+fn report() { pln('weekly report'); }
 ```
 
-### Python
-Stof is available on [PyPi](https://pypi.org/project/stof).
-
-```python
-from pystof import Doc
-
-STOF = """
-#[main]
-fn main() {
-    const name = Example.name('Stof,', 'with Python');
-    pln(`Hello, ${name}!!`)
-}
-"""
-
-def name(first, last):
-    return first + ' ' + last
-
-def main():
-    doc = Doc()
-    doc.lib('Example', 'name', name)
-    doc.parse(STOF)
-    doc.run()
-
-if __name__ == "__main__":
-    main()
-
-# Output:
-# Hello, Stof, with Python!!
+```bash
+stof run jobs.stof -a nightly            # only #[nightly]
+stof run jobs.stof -a nightly -a weekly  # both
 ```
 
-### JavaScript/TypeScript
-Stof is compiled to WebAssembly for embedding in JS, and a [JSR](https://jsr.io/@formata/stof) package is provided.
+### Errors and exit codes
 
-```typescript
-import { StofDoc } from '@formata/stof';
-const doc = await StofDoc.new();
+Errors show the message, the line that failed, and the Stof call stack:
 
-doc.lib('Std', 'pln', (... vars: unknown[]) => console.log(...vars));
-doc.lib('Example', 'nested', async (): Promise<Map<string, string>> => {
-    const res = new Map();
-    res.set('msg', 'hello, there');
-    res.set('nested', await (async (): Promise<string> => 'this is a nested async JS fn (like fetch)')());
-    return res;
-}, true);
-
-doc.parse(`
-    field: 42
-    fn main() -> int {
-        const res = await Example.nested();
-        pln(res);
-        self.field
-    }
-`);
-const field = await doc.call('main');
-console.log(field);
-
-/*
-Map(2) {                                                                                                                                                                                                                       
-  "msg" => "hello, there",
-  "nested" => "this is a nested async JS fn (like fetch)"
-}
-42
-*/
+```text
+$ stof run rates.stof
+main root main ... failed
+error: cannot multiply null: the right value is null or missing (use ?? to give a default)
+  --> rates.stof:9:5
+   |
+ 9 |     units * self.rate
+   |     ^
+  at root.total (rates.stof:9:5)
+  at root.main (rates.stof:5:5)
 ```
 
-## Research & Exploration
-Stof explores several research areas:
+Every command exits with code `1` when something fails (a parse error, a failing test, a failed `#[main]`), so `stof test` works as a CI step as-is.
 
-- Practical code mobility at scale with modern type systems
-- Security models for distributed computation-as-data
-- Performance characteristics of serializable computation vs traditional RPC
-- Formal semantics for "code as data" in distributed systems
-- Edge computing, data pipelines, and collaborative systems
+## Packages
+
+A package is a directory with a `pkg.stof` file that says what to import:
+
+```stof
+// my-lib/pkg.stof
+name: 'my-lib'
+version: 0.1.0
+import: ['src/main.stof']   // files to import when the package is run or imported
+exclude: ['^tests']         // optional: regexes for paths to leave out of the .pkg
+// include: ['^src']        // optional: only package paths that match
+```
+
+```bash
+stof run my-lib              # run the package directory
+stof pkg my-lib              # -> my-lib/out.pkg
+stof run my-lib/out.pkg      # run the packaged file
+stof unpkg my-lib/out.pkg    # -> ./stof/out/
+```
+
+Inside Stof, `import pkg '@my-lib'` imports the package in `stof/my-lib` (where `stof unpkg` puts packages), and `import '@name'` imports the file `stof/name.stof`, both relative to the working directory.
+
+## Permissions
+
+Embedded Stof is sandboxed: a document can only see itself and the functions its host app gives it. The CLI runs your own files, so it turns on everything a script would expect: the file system (`fs`), environment variables (`env`), file and package imports, and the network (`Http.fetch`). Run files you'd trust as scripts.
+
+When you embed Stof in an app, nothing is on until you allow it (`allow_system()`, `allow_http()`). See the [Stof README](https://github.com/dev-formata-io/stof#readme).
+
+## Learn more
+
+- [Stof](https://github.com/dev-formata-io/stof): the runtime, embedding in Rust, JavaScript, and Python, and the changelog
+- [stof.dev](https://stof.dev): docs and the standard library
+- [Playground](https://stof.dev/playground): try Stof in the browser
+- [Discord](https://discord.gg/Up5kxdeXZt): questions and discussion
 
 ## License
-Apache 2.0. See LICENSE for details.
 
-## Feedback & Community
-- Open issues or discussions on [GitHub](https://github.com/dev-formata-io/stof)
-- Chat with us on [Discord](https://discord.gg/Up5kxdeXZt)
-- Star the project to support future development!
-
-> Reach out to info@stof.dev to contact us directly
+Apache 2.0. See [LICENSE](LICENSE).

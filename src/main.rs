@@ -46,7 +46,7 @@ const BANNER: &str = r#"
 
 
 #[derive(Parser, Debug)]
-#[command(author, version, about = "Portable code and data together", long_about = None, before_help = BANNER)]
+#[command(author, version, about = "Run, test, document, and package Stof: portable, sandboxed logic inside data", long_about = None, before_help = BANNER)]
 struct Cli {
     #[arg(short, long, action = clap::ArgAction::Count)]
     /// Turn debug logging on ("log_error" & "log_warn" always on) ("-d" for "log_info" logs, "-dd" for "log_trace" & "log_debug" also)
@@ -106,7 +106,7 @@ enum Command {
         /// Path to a Stof package (.pkg) file.
         path: String,
 
-        /// Optional output directory (defualts to "stof/<PATH NAME>").
+        /// Optional output directory (defaults to "stof/<PATH NAME>").
         out: Option<String>,
     },
 }
@@ -136,14 +136,17 @@ fn main() {
                 graph = create_graph("", GraphProfile::Prod);
             }
 
-            if attribute.len() < 1 { attribute.push("main".into()); } // main funtions by default
+            if attribute.len() < 1 { attribute.push("main".into()); } // main functions by default
             let attributes = attribute
                 .into_iter()
                 .collect();
             
             match Runtime::run_attribute_functions(&mut graph, None, &Some(attributes), true) {
                 Ok(res) => println!("{res}"),
-                Err(res) => println!("{res}"),
+                Err(res) => {
+                    println!("{res}");
+                    std::process::exit(1); // failures are visible to scripts and CI
+                },
             }
         },
         Command::Test { path, context } => {
@@ -159,7 +162,10 @@ fn main() {
             }
             match graph.test(context, true) {
                 Ok(res) => println!("{res}"),
-                Err(res) => println!("{res}"),
+                Err(res) => {
+                    println!("{res}");
+                    std::process::exit(1); // failing tests fail the command (CI)
+                },
             }
         },
         Command::Docs { tests, path, out } => {
@@ -182,6 +188,7 @@ fn main() {
                 },
                 Err(error) => {
                     println!("{} {}", "docs creation error".red(), error.to_string());
+                    std::process::exit(1);
                 }
             }
         },
@@ -202,7 +209,11 @@ fn main() {
             if let Ok(exists) = fs::exists(&pkg_path) {
                 if exists {
                     let mut graph = Graph::default();
-                    let _ = graph.file_import("stof", &pkg_path, None, &Profile::default());
+                    graph.allow_system(); // reading pkg.stof (and its imports) from disk
+                    if let Err(error) = graph.file_import("stof", &pkg_path, None, &Profile::default()) {
+                        log::error!("{} {}", "pkg.stof error:".red(), error.to_string());
+                        std::process::exit(1);
+                    }
                     let root = graph.ensure_main_root();
 
                     // Include files
@@ -265,10 +276,34 @@ fn main() {
                 }
             }
 
-            if let Some(path) = StofPackageFormat::create_package_file(&dir, &out_path, &included, &excluded) {
-                println!("{} {}", "created".green(), path.blue());
-            } else {
+            if !out_path.ends_with(".pkg") { out_path.push_str(".pkg"); }
+
+            // Never pack the output file itself (the default output is inside the directory, and an
+            // older package there would otherwise end up in the new one)
+            if let (Ok(out_abs), Ok(dir_abs)) = (std::path::absolute(&out_path), std::path::absolute(&dir)) {
+                if let Ok(relative) = out_abs.strip_prefix(&dir_abs) {
+                    let relative = relative.to_string_lossy().replace('\\', "/");
+                    excluded.insert(format!("^{}$", regex_escape(&relative)));
+                }
+            }
+
+            // Build in a temp file first so the package being written isn't part of its own contents
+            let temp_path = std::env::temp_dir().join(format!("stof-pkg-{}.pkg", std::process::id()));
+            let Some(created) = StofPackageFormat::create_package_file(&dir, &temp_path.to_string_lossy(), &included, &excluded) else {
                 log::error!("{}", "pkg creation error".red());
+                std::process::exit(1);
+            };
+            if let Some(parent) = PathBuf::from(&out_path).parent() {
+                if !parent.as_os_str().is_empty() { let _ = fs::create_dir_all(parent); }
+            }
+            let copied = fs::copy(&created, &out_path);
+            let _ = fs::remove_file(&created);
+            match copied {
+                Ok(_) => println!("{} {}", "created".green(), out_path.blue()),
+                Err(error) => {
+                    log::error!("{} {}: {}", "pkg creation error".red(), out_path.blue(), error);
+                    std::process::exit(1);
+                }
             }
         },
         Command::Unpkg { mut path, out } => {
@@ -284,12 +319,27 @@ fn main() {
                 stem = stem.replace('.', "_");
                 dir = format!("./stof/{stem}");
             }
+            if !fs::exists(&path).unwrap_or(false) {
+                log::error!("{} {}", "package not found:".red(), path.blue());
+                std::process::exit(1);
+            }
             let _ = fs::create_dir_all(&dir);
 
             StofPackageFormat::unzip_file(&path, &dir);
             println!("{} {}", "unpacked".green(), path.blue());
         },
     }
+}
+
+
+/// Escape regex metacharacters (package include/exclude patterns are regexes).
+fn regex_escape(text: &str) -> String {
+    let mut escaped = String::with_capacity(text.len());
+    for ch in text.chars() {
+        if "\\.+*?()|[]{}^$#&-~".contains(ch) { escaped.push('\\'); }
+        escaped.push(ch);
+    }
+    escaped
 }
 
 
@@ -315,8 +365,18 @@ fn create_graph(path: &str, prof: GraphProfile) -> Graph {
     let mut graph = Graph::default();
     graph.set_deadpools_enabled(false); // no need for deadpools with CLI
 
+    // The CLI runs your own documents: give them the file system, environment, and network
+    // (embedded Stof is sandboxed by default; hosts opt in to these)
+    graph.allow_system();
+    graph.allow_http();
+
     let profile = match prof {
-        GraphProfile::Prod => Profile::prod(),
+        GraphProfile::Prod => {
+            // statement locations in error messages (file:line:col); costs ~1-2% when running
+            let mut profile = Profile::prod();
+            profile.debug_info = true;
+            profile
+        },
         GraphProfile::Docs => Profile::docs(false),
         GraphProfile::Test => Profile::test(),
         GraphProfile::TestDocs => Profile::docs(true),
@@ -333,7 +393,7 @@ fn create_graph(path: &str, prof: GraphProfile) -> Graph {
             res = Err(Error::Custom("could not retrieve import format".into()));
         }
     } else {
-        res = Err(Error::Custom("could not determin import extension".into()));
+        res = Err(Error::Custom("could not determine the import format (no file extension)".into()));
     }
 
     match res {
@@ -342,7 +402,7 @@ fn create_graph(path: &str, prof: GraphProfile) -> Graph {
         },
         Err(error) => {
             log::error!("{}", error.to_string());
-            Graph::default()
+            std::process::exit(1); // nothing to run: don't continue with an empty document
         }
     }
 }
