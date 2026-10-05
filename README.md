@@ -59,7 +59,7 @@ test result: ok. 1 passed; 0 failed; finished in 0s
 | Command | What it does |
 |---|---|
 | `stof run [path]` | Runs every `#[main]` function. `-a <attr>` runs functions with another attribute instead (repeatable). |
-| `stof test [path] [filter]` | Runs every `#[test]` function. The optional filter runs only tests on objects whose path contains it (Ex. `Libs.Http`). |
+| `stof test [path] [filter]` | Runs every `#[test]` function. The optional filter runs only tests on objects whose path contains it (Ex. `Libs.Http`). `--leaks` runs tests one at a time and fails any that leave objects behind (never dropped, not in any field). |
 | `stof docs [path] [out]` | Writes Markdown docs for the document (and the standard library) into `out` (default `./`). `--tests` includes test functions. |
 | `stof pkg [dir] [out]` | Bundles a directory with a `pkg.stof` file into a `.pkg` file (default `<dir>/out.pkg`). |
 | `stof unpkg <file> [out]` | Unpacks a `.pkg` file into a directory (default `./stof/<name>`). |

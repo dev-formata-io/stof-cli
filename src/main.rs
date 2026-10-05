@@ -71,6 +71,10 @@ enum Command {
 
     /// Test a file or package, running all #[test] functions.
     Test {
+        #[arg(long)]
+        /// Run tests one at a time and fail any test that leaves objects behind (created, never dropped, not in any field).
+        leaks: bool,
+
         /// Path to a file or package to import.
         path: Option<String>,
 
@@ -149,7 +153,7 @@ fn main() {
                 },
             }
         },
-        Command::Test { path, context } => {
+        Command::Test { leaks, path, context } => {
             let mut graph;
             if let Some(path) = path {
                 if path == "." {
@@ -160,7 +164,8 @@ fn main() {
             } else {
                 graph = create_graph("", GraphProfile::Test);
             }
-            match graph.test(context, true) {
+            let res = if leaks { graph.test_leaks(context, true) } else { graph.test(context, true) };
+            match res {
                 Ok(res) => println!("{res}"),
                 Err(res) => {
                     println!("{res}");

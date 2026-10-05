@@ -1,6 +1,6 @@
 [package]
 name = "stof-cli"
-version = "0.12.0"
+version = "0.12.1"
 edition = "2024"
 authors = ["CJ Cummings <cj@formata.io>"]
 description = "Command-line tool for Stof: run, test, document, and package portable, sandboxed logic inside data."
@@ -20,4 +20,4 @@ colored = "3.0.0"
 colog = "1.3.0"
 env_logger = "0.11.8"
 log = "0.4.28"
-stof = { version = "0.10.1", path = "../stof", features = ["full"] } # path for local builds (ignored when publishing)
+stof = { version = "0.10.3", path = "../stof", features = ["full"] } # path for local builds (ignored when publishing)
