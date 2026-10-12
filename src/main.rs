@@ -19,6 +19,8 @@ use clap::{Parser, Subcommand};
 use colog::format::CologStyle;
 use colored::Colorize;
 use log::Level;
+mod lsp;
+
 use stof::{model::{Field, Graph, Profile, StofPackageFormat, prof::insert_profile_lib}, runtime::{Error, Runtime, Val}};
 
 
@@ -113,6 +115,9 @@ enum Command {
         /// Optional output directory (defaults to "stof/<PATH NAME>").
         out: Option<String>,
     },
+
+    /// Start the Stof language server (stdio), used by editors (Ex. the VS Code extension).
+    Lsp,
 }
 
 /// Main.
@@ -128,6 +133,12 @@ fn main() {
     builder.init();
 
     match cli.command {
+        Command::Lsp => {
+            if let Err(error) = lsp::run() {
+                log::error!("language server: {error}");
+                std::process::exit(1);
+            }
+        },
         Command::Run { path , mut attribute } => {
             let mut graph;
             if let Some(path) = path {

@@ -63,6 +63,7 @@ test result: ok. 1 passed; 0 failed; finished in 0s
 | `stof docs [path] [out]` | Writes Markdown docs for the document (and the standard library) into `out` (default `./`). `--tests` includes test functions. |
 | `stof pkg [dir] [out]` | Bundles a directory with a `pkg.stof` file into a `.pkg` file (default `<dir>/out.pkg`). |
 | `stof unpkg <file> [out]` | Unpacks a `.pkg` file into a directory (default `./stof/<name>`). |
+| `stof lsp` | Starts the Stof language server on stdin/stdout, for editors (the [VS Code extension](https://marketplace.visualstudio.com/items?itemName=Formata.stof) uses it): errors and warnings, outline, go to definition, hover, completion, references, and rename. |
 
 `path` can be a `.stof` file, any supported data file (JSON, YAML, TOML, ...), a package directory, or a `.pkg` file. It defaults to the current directory.
 
