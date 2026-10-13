@@ -122,6 +122,7 @@ enum Command {
 
 /// Main.
 fn main() {
+    quiet_broken_pipe();
     let cli = Cli::parse();
     let mut builder = env_logger::builder();
     builder.format(colog::formatter(StofCliLogger));
@@ -421,4 +422,20 @@ fn create_graph(path: &str, prof: GraphProfile) -> Graph {
             std::process::exit(1); // nothing to run: don't continue with an empty document
         }
     }
+}
+
+
+/// Output piped to a program that stopped reading (Ex. `stof run main.stof | head`) can't be printed: exit quietly,
+/// like other command line tools, instead of panicking. Printing panics on any platform (stdout or stderr).
+fn quiet_broken_pipe() {
+    let default_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        let message = info.payload().downcast_ref::<String>().map(|s| s.as_str())
+            .or_else(|| info.payload().downcast_ref::<&str>().copied())
+            .unwrap_or_default();
+        if message.starts_with("failed printing to stdout") || message.starts_with("failed printing to stderr") {
+            std::process::exit(0);
+        }
+        default_hook(info);
+    }));
 }

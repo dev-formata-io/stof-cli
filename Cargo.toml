@@ -1,6 +1,6 @@
 [package]
 name = "stof-cli"
-version = "0.13.0"
+version = "0.13.1"
 edition = "2024"
 authors = ["CJ Cummings <cj@formata.io>"]
 description = "Command-line tool for Stof (JSON with functions, run safely): run, test, document, and package Stof documents, and the Stof language server for editors."
@@ -23,4 +23,4 @@ log = "0.4.28"
 lsp-server = "0.7.9"
 lsp-types = "0.95.1"
 serde_json = "1"
-stof = { version = "0.10.5", path = "../stof", features = ["full"] } # path for local builds (ignored when publishing)
+stof = { version = "0.10.6", path = "../stof", features = ["full"] } # path for local builds (ignored when publishing)
