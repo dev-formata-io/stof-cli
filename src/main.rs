@@ -386,6 +386,7 @@ fn create_graph(path: &str, prof: GraphProfile) -> Graph {
     // (embedded Stof is sandboxed by default; hosts opt in to these)
     graph.allow_system();
     graph.allow_http();
+    graph.keep_source(true); // so stringify('stof') writes functions as their source
 
     let profile = match prof {
         GraphProfile::Prod => {
