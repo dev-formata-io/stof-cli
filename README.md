@@ -13,9 +13,9 @@
     <a href="https://crates.io/crates/stof-cli"><img src="https://img.shields.io/crates/l/stof-cli?color=maroon"></a>
 </h1>
 
-<h3 align="center">The Stof command line: run, test, document, and package Stof files.</h3>
+<h3 align="center">The Stof command line: run, test, document, and package Stof documents.</h3>
 
-[Stof](https://github.com/dev-formata-io/stof) is JSON that can carry its own functions: portable, sandboxed logic inside data that runs the same in Rust, JavaScript, and Python. This CLI is how you work with Stof files directly: run them while you build, test them in CI, generate docs, and bundle them into packages.
+[Stof](https://github.com/dev-formata-io/stof) is for software that behaves differently for every user: each customer's rules, tools, and state in one document that an agent can edit, a person can review, and your app runs, sandboxed, in Rust, JavaScript, and Python. This CLI is how you work with Stof documents directly: run them while you build, test them in CI (Ex. a customer's document before you approve an agent's change), generate docs, and bundle them into packages.
 
 ## Install
 
@@ -29,8 +29,8 @@ This installs the `stof` command. It needs a [Rust toolchain](https://rustup.rs)
 
 `hello.stof`:
 
-```stof
-name: 'world'
+```rust
+name: "world"
 
 #[main]
 fn main() {
@@ -39,7 +39,7 @@ fn main() {
 
 #[test]
 fn has_a_name() {
-    assert_eq(self.name, 'world');
+    assert_eq(self.name, "world");
 }
 ```
 
@@ -73,12 +73,12 @@ Global flags: `-d` shows `log_info` output, `-dd` also shows debug and trace log
 
 Attributes are just labels, so one file can hold several entry points:
 
-```stof
+```rust
 #[nightly]
-fn cleanup() { pln('cleaning up'); }
+fn cleanup() { pln("cleaning up"); }
 
 #[weekly]
-fn report() { pln('weekly report'); }
+fn report() { pln("weekly report"); }
 ```
 
 ```bash
@@ -108,13 +108,13 @@ Every command exits with code `1` when something fails (a parse error, a failing
 
 A package is a directory with a `pkg.stof` file that says what to import:
 
-```stof
+```rust
 // my-lib/pkg.stof
-name: 'my-lib'
+name: "my-lib"
 version: 0.1.0
-import: ['src/main.stof']   // files to import when the package is run or imported
-exclude: ['^tests']         // optional: regexes for paths to leave out of the .pkg
-// include: ['^src']        // optional: only package paths that match
+import: ["src/main.stof"]   // files to import when the package is run or imported
+exclude: ["^tests"]         // optional: regexes for paths to leave out of the .pkg
+// include: ["^src"]        // optional: only package paths that match
 ```
 
 ```bash
