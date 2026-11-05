@@ -128,9 +128,9 @@ Inside Stof, `import pkg '@my-lib'` imports the package in `stof/my-lib` (where 
 
 ## Permissions
 
-Embedded Stof is sandboxed: a document can only see itself and the functions its host app gives it. The CLI runs your own files, so it turns on everything a script would expect: the file system (`fs`), environment variables (`env`), file and package imports, and the network (`Http.fetch`). Run files you'd trust as scripts.
+Embedded Stof is sandboxed: a document can only see itself and the functions its host app gives it. The CLI runs your own files, so it turns on everything a script would expect: the file system (`fs`), environment variables (`env`), file and package imports, and the network (`Http::fetch`, including `localhost` and your private network). There's no memory limit, and `html` exports keep `style`, `action`, and `formaction`. Calls still have a time limit. Run files you'd trust as scripts.
 
-When you embed Stof in an app, nothing is on until you allow it (`allow_system()`, `allow_http()`). See the [Stof README](https://github.com/dev-formata-io/stof#readme).
+When you embed Stof in an app, nothing is on until you allow it (`allow_system()`, `allow_http()`), and calls have time and memory limits. See [Security and the Sandbox](https://stof.dev/start/security).
 
 ## Learn more
 

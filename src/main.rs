@@ -382,10 +382,14 @@ fn create_graph(path: &str, prof: GraphProfile) -> Graph {
     let mut graph = Graph::default();
     graph.set_deadpools_enabled(false); // no need for deadpools with CLI
 
-    // The CLI runs your own documents: give them the file system, environment, and network
-    // (embedded Stof is sandboxed by default; hosts opt in to these)
+    // The CLI runs your own documents, like scripts: give them the file system, environment, and network (your
+    // machine and private network too), no memory limit, and all of HTML's attributes (embedded Stof is sandboxed by
+    // default; hosts opt in to these)
     graph.allow_system();
     graph.allow_http();
+    graph.allow_private_network();
+    graph.allow_html_attributes(["style", "action", "formaction"]);
+    graph.max_memory = None;
     graph.keep_source(true); // so stringify('stof') writes functions as their source
 
     let profile = match prof {
