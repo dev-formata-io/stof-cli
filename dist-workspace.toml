@@ -1,0 +1,30 @@
+[workspace]
+members = ["cargo:."]
+
+# Config for 'dist' (https://axodotdev.github.io/cargo-dist/): builds the `stof` binary for each
+# platform, makes a GitHub Release with installers, and publishes stof-cli to crates.io.
+# Change this file, then run `dist generate` to update .github/workflows/release.yml.
+[dist]
+# The preferred dist version to use in CI (Cargo.toml SemVer syntax)
+cargo-dist-version = "0.34.0"
+# CI backends to support
+ci = "github"
+# Releases run only when started by hand (Actions > Release > Run workflow, with the tag, Ex. v0.14.4)
+dispatch-releases = true
+# The installers to generate for each app
+installers = ["shell", "powershell"]
+# Target platforms to build apps for (Rust target-triple syntax). Linux binaries are static (musl), so they
+# run on any distribution.
+targets = ["aarch64-apple-darwin", "x86_64-apple-darwin", "aarch64-unknown-linux-musl", "x86_64-unknown-linux-musl", "x86_64-pc-windows-msvc"]
+# Path that installers should place binaries in (the same place `cargo install` does, so they replace each other)
+install-path = "CARGO_HOME"
+# Whether to install an updater program
+install-updater = false
+# Publish jobs to run in CI: crates.io, with trusted publishing
+publish-jobs = ["./publish-crates"]
+# Permissions for custom jobs
+github-custom-job-permissions = { "publish-crates" = { contents = "read", id-token = "write" } }
+
+# ARM Linux builds on an ARM runner, not a cross compiler (mimalloc and ring build C)
+[dist.github-custom-runners]
+aarch64-unknown-linux-musl = "ubuntu-24.04-arm"

@@ -23,6 +23,11 @@ mod lsp;
 
 use stof::{model::{Field, Graph, Profile, StofPackageFormat, prof::insert_profile_lib}, runtime::{Error, Runtime, Val}};
 
+// Stof's counting allocator, with mimalloc under it (the stof crate's `mimalloc` feature): faster, and a call's
+// memory budget counts heap here the same way it does in the Python and JavaScript builds.
+#[global_allocator]
+static ALLOC: stof::runtime::memory::StofAlloc = stof::runtime::memory::StofAlloc;
+
 
 pub struct StofCliLogger;
 impl CologStyle for StofCliLogger {

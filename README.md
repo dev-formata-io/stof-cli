@@ -19,11 +19,23 @@
 
 ## Install
 
+macOS and Linux:
+
 ```bash
-cargo install stof-cli
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/dev-formata-io/stof-cli/releases/latest/download/stof-cli-installer.sh | sh
 ```
 
-This installs the `stof` command. It needs a [Rust toolchain](https://rustup.rs). To try Stof without installing anything, use the [Playground](https://stof.dev/playground).
+Windows (PowerShell):
+
+```powershell
+powershell -ExecutionPolicy Bypass -c "irm https://github.com/dev-formata-io/stof-cli/releases/latest/download/stof-cli-installer.ps1 | iex"
+```
+
+These install the `stof` command, prebuilt, with no Rust needed. There are binaries for macOS (Apple silicon and Intel), Linux (x86_64 and ARM, static, so they run on any distribution), and Windows (x64). You can also download one from [Releases](https://github.com/dev-formata-io/stof-cli/releases) and put it on your `PATH`.
+
+With Rust installed, `cargo binstall stof-cli` downloads the same binary, and `cargo install stof-cli` builds it from source.
+
+To try Stof without installing anything, use the [Playground](https://stof.dev/playground).
 
 ## Quick start
 
@@ -138,6 +150,21 @@ When you embed Stof in an app, nothing is on until you allow it (`allow_system()
 - [stof.dev](https://stof.dev): docs and the standard library
 - [Playground](https://stof.dev/playground): try Stof in the browser
 - [Discord](https://discord.gg/Up5kxdeXZt): questions and discussion
+
+## Building and releasing
+
+`cargo build --release` builds against the published `stof` crate. To build against a local checkout of Stof (Ex. a change that isn't released yet), point Cargo at it for that build, and don't commit the `Cargo.lock` change it makes:
+
+```bash
+cargo build --release --config 'patch.crates-io.stof.path="../stof"'
+```
+
+Releases are built by [dist](https://axodotdev.github.io/cargo-dist/) (`dist-workspace.toml`, which generates `.github/workflows/release.yml`). To release:
+
+1. Bump `version` in `Cargo.toml` (and the `stof` dependency, if it changed) and commit.
+2. In GitHub, **Actions > Release > Run workflow**, with the tag `v<version>` (Ex. `v0.14.4`).
+
+The workflow builds each platform, creates the GitHub Release with the binaries and installers, then publishes to crates.io with trusted publishing (the `release` environment, no token). It runs only when started by hand.
 
 ## License
 
