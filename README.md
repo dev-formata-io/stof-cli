@@ -162,7 +162,7 @@ cargo build --release --config 'patch.crates-io.stof.path="../stof"'
 Releases are built by [dist](https://axodotdev.github.io/cargo-dist/) (`dist-workspace.toml`, which generates `.github/workflows/release.yml`). To release:
 
 1. Bump `version` in `Cargo.toml` (and the `stof` dependency, if it changed) and commit.
-2. In GitHub, **Actions > Release > Run workflow**, with the tag `v<version>` (Ex. `v0.14.4`).
+2. In GitHub, **Actions > Release > Run workflow**, with the tag `v<version>` (Ex. `v0.14.5`).
 
 The workflow builds each platform, creates the GitHub Release with the binaries and installers, then publishes to crates.io with trusted publishing (the `release` environment, no token). It runs only when started by hand.
 

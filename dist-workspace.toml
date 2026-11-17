@@ -9,7 +9,7 @@ members = ["cargo:."]
 cargo-dist-version = "0.34.0"
 # CI backends to support
 ci = "github"
-# Releases run only when started by hand (Actions > Release > Run workflow, with the tag, Ex. v0.14.4)
+# Releases run only when started by hand (Actions > Release > Run workflow, with the tag, Ex. v0.14.5)
 dispatch-releases = true
 # The installers to generate for each app
 installers = ["shell", "powershell"]
